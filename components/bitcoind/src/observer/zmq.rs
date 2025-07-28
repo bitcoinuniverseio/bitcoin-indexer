@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use config::Config;
 use zmq::Socket;
 
@@ -31,9 +36,10 @@ fn new_zmq_socket() -> Socket {
 }
 
 pub async fn start_zeromq_pipeline(
-    blocks_post_processor: &BlockProcessor,
+    block_processor: &mut BlockProcessor,
     start_sequencing_blocks_at_height: u64,
     compress_blocks: bool,
+    abort_signal: &Arc<AtomicBool>,
     config: &Config,
     ctx: &Context,
 ) -> Result<(), String> {
@@ -53,6 +59,16 @@ pub async fn start_zeromq_pipeline(
     );
 
     loop {
+        // Check if the indexer has been interrupted. If so, send a terminate command to the block processor.
+        if abort_signal.load(Ordering::SeqCst) {
+            block_processor
+                .commands_tx
+                .send(BlockProcessorCommand::Terminate)
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+
+        // Receive a new ZMQ message from bitcoind.
         let msg = match socket.recv_multipart(0) {
             Ok(msg) => msg,
             Err(e) => {
@@ -107,7 +123,7 @@ pub async fn start_zeromq_pipeline(
         } else {
             vec![]
         };
-        blocks_post_processor
+        block_processor
             .commands_tx
             .send(BlockProcessorCommand::ProcessBlocks {
                 compacted_blocks,

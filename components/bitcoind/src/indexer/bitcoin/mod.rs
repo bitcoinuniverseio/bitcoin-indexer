@@ -238,13 +238,13 @@ pub async fn retrieve_block_hash(
     Ok(block_hash)
 }
 
-// not used internally by chainhook; exported for ordinals
 pub async fn try_download_block_bytes_with_retry(
     http_client: HttpClient,
     block_height: u64,
     bitcoin_config: BitcoindConfig,
     ctx: Context,
 ) -> Result<Vec<u8>, String> {
+    crate::try_info!(ctx, "BitcoinRpc downloading block #{}", block_height);
     let block_hash =
         retrieve_block_hash_with_retry(&http_client, &block_height, &bitcoin_config, &ctx)
             .await
@@ -353,7 +353,7 @@ pub fn standardize_bitcoin_block(
     network: &BitcoinNetwork,
     ctx: &Context,
 ) -> Result<BitcoinBlockData, (String, bool)> {
-    let mut transactions = vec![];
+    let mut transactions = Vec::with_capacity(block.tx.len());
     let block_height = block.height as u64;
 
     try_debug!(
@@ -366,7 +366,7 @@ pub fn standardize_bitcoin_block(
     for (tx_index, mut tx) in block.tx.into_iter().enumerate() {
         let txid = tx.txid.to_string();
 
-        let mut inputs = vec![];
+        let mut inputs = Vec::with_capacity(tx.vin.len());
         let mut sats_in = 0;
         for (index, input) in tx.vin.drain(..).enumerate() {
             if input.is_coinbase() {
@@ -408,7 +408,7 @@ pub fn standardize_bitcoin_block(
 
             inputs.push(TxIn {
                 previous_output: OutPoint {
-                    txid: TransactionIdentifier::new(&txid.to_string()),
+                    txid: TransactionIdentifier::new(txid),
                     vout,
                     block_height: prevout.height,
                     value: prevout.value.to_sat(),
@@ -418,14 +418,13 @@ pub fn standardize_bitcoin_block(
                 witness: input
                     .txinwitness
                     .unwrap_or(vec![])
-                    .to_vec()
                     .iter()
                     .map(|w| format!("0x{}", w))
-                    .collect::<Vec<_>>(),
+                    .collect(),
             });
         }
 
-        let mut outputs = vec![];
+        let mut outputs = Vec::with_capacity(tx.vout.len());
         let mut sats_out = 0;
         for output in tx.vout.drain(..) {
             let value = output.value.to_sat();

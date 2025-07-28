@@ -8,11 +8,17 @@ use core::{
     },
     protocol::sequence_cursor::SequenceCursor,
 };
-use std::{sync::Arc, thread::JoinHandle};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::JoinHandle,
+};
 
 use bitcoind::{
     indexer::{start_bitcoin_indexer, Indexer, IndexerCommand},
-    try_debug,
+    try_debug, try_info,
     types::BlockIdentifier,
     utils::{future_block_on, Context},
 };
@@ -54,16 +60,19 @@ fn pg_pools(config: &Config) -> PgConnectionPools {
 
 async fn new_ordinals_indexer_runloop(
     prometheus: &PrometheusMonitoring,
+    abort_signal: &Arc<AtomicBool>,
     config: &Config,
     ctx: &Context,
 ) -> Result<Indexer, String> {
-    let (commands_tx, commands_rx) = crossbeam_channel::unbounded::<IndexerCommand>();
+    let (commands_tx, commands_rx) =
+        crossbeam_channel::bounded(config.resources.indexer_channel_capacity);
     let pg_pools = pg_pools(config);
 
     let config_moved = config.clone();
     let ctx_moved = ctx.clone();
     let pg_pools_moved = pg_pools.clone();
     let prometheus_moved = prometheus.clone();
+    let abort_signal_moved = abort_signal.clone();
     let handle: JoinHandle<()> = hiro_system_kit::thread_named("ordinals_indexer")
         .spawn(move || {
             future_block_on(&ctx_moved.clone(), async move {
@@ -75,6 +84,9 @@ async fn new_ordinals_indexer_runloop(
                 let mut brc20_cache: Option<core::meta_protocols::brc20::cache::Brc20MemoryCache> =
                     brc20_new_cache(&config_moved);
                 loop {
+                    if abort_signal_moved.load(Ordering::SeqCst) {
+                        break;
+                    }
                     match commands_rx.recv() {
                         Ok(command) => match command {
                             IndexerCommand::StoreCompactedBlocks(blocks) => {
@@ -118,6 +130,7 @@ async fn new_ordinals_indexer_runloop(
                                     &config_moved,
                                     &pg_pools_moved,
                                     &ctx_moved,
+                                    &abort_signal_moved,
                                 )
                                 .await
                                 {
@@ -136,10 +149,15 @@ async fn new_ordinals_indexer_runloop(
                                     garbage_collect_nth_block = 0;
                                 }
                             }
+                            IndexerCommand::Terminate => {
+                                break;
+                            }
                         },
                         Err(e) => return Err(format!("ordinals indexer channel error: {e}")),
                     }
                 }
+                try_info!(ctx_moved, "OrdinalsIndexer thread complete");
+                Ok(())
             });
         })
         .expect("unable to spawn thread");
@@ -180,12 +198,12 @@ async fn new_ordinals_indexer_runloop(
     Ok(Indexer {
         commands_tx,
         chain_tip,
-        thread_handle: handle,
+        thread_handle: Some(handle),
     })
 }
 
 pub async fn get_chain_tip(config: &Config) -> Result<BlockIdentifier, String> {
-    let pool = pg_pool(&config.ordinals.as_ref().unwrap().db).unwrap();
+    let pool = pg_pool(&config.ordinals.as_ref().unwrap().db)?;
     let ord_client = pg_pool_client(&pool).await?;
     Ok(db::ordinals_pg::get_chain_tip(&ord_client).await?.unwrap())
 }
@@ -211,6 +229,7 @@ pub async fn rollback_block_range(
 /// and `stream_blocks_at_chain_tip` is set to false.
 pub async fn start_ordinals_indexer(
     stream_blocks_at_chain_tip: bool,
+    abort_signal: &Arc<AtomicBool>,
     config: &Config,
     ctx: &Context,
 ) -> Result<(), String> {
@@ -230,28 +249,31 @@ pub async fn start_ordinals_indexer(
         .initialize(max_inscription_number, chain_tip.index, &pg_pools)
         .await?;
 
-    let indexer = new_ordinals_indexer_runloop(&prometheus, config, ctx).await?;
+    let mut indexer = new_ordinals_indexer_runloop(&prometheus, abort_signal, config, ctx).await?;
 
     if let Some(metrics) = &config.metrics {
         if metrics.enabled {
             let registry_moved = prometheus.registry.clone();
             let ctx_cloned = ctx.clone();
             let port = metrics.prometheus_port;
+            let abort_signal_cloned = abort_signal.clone();
             let _ = std::thread::spawn(move || {
                 hiro_system_kit::nestable_block_on(start_serving_prometheus_metrics(
                     port,
                     registry_moved,
                     ctx_cloned,
+                    abort_signal_cloned,
                 ));
             });
         }
     }
 
     start_bitcoin_indexer(
-        &indexer,
+        &mut indexer,
         first_inscription_height(config),
         stream_blocks_at_chain_tip,
         true,
+        abort_signal,
         config,
         ctx,
     )

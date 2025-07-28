@@ -1,5 +1,9 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use bitcoind::{try_debug, try_info, try_warn, utils::Context};
-use config::Config;
 use hyper::{
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
@@ -9,8 +13,7 @@ use prometheus::{
     core::{AtomicF64, AtomicU64, GenericCounter, GenericGauge},
     Encoder, Histogram, HistogramOpts, Registry, TextEncoder,
 };
-
-use crate::db::pg_connect;
+use tokio::time::{sleep, Duration};
 
 type UInt64Gauge = GenericGauge<AtomicU64>;
 type F64Gauge = GenericGauge<AtomicF64>;
@@ -186,13 +189,7 @@ impl PrometheusMonitoring {
         h
     }
 
-    pub async fn initialize(
-        &self,
-        max_rune_number: u64,
-        block_height: u64,
-        config: &Config,
-        ctx: &Context,
-    ) -> Result<(), String> {
+    pub async fn initialize(&self, max_rune_number: u64, block_height: u64) -> Result<(), String> {
         self.metrics_block_indexed(block_height);
         self.metrics_rune_indexed(max_rune_number);
 
@@ -203,18 +200,6 @@ impl PrometheusMonitoring {
         self.metrics_record_runes_cenotaph_per_block(0);
         self.metrics_record_runes_cenotaph_etching_per_block(0);
         self.metrics_record_runes_cenotaph_mint_per_block(0);
-
-        // Read initial values from the database for Runes
-        let mut runes_client = pg_connect(config, false, ctx).await;
-        let runes_tx = runes_client
-            .transaction()
-            .await
-            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
-
-        runes_tx
-            .commit()
-            .await
-            .map_err(|e| format!("Failed to commit transaction: {}", e))?;
 
         Ok(())
     }
@@ -325,7 +310,12 @@ async fn serve_req(
     }
 }
 
-pub async fn start_serving_prometheus_metrics(port: u16, registry: Registry, ctx: Context) {
+pub async fn start_serving_prometheus_metrics(
+    port: u16,
+    registry: Registry,
+    ctx: Context,
+    abort_signal: Arc<AtomicBool>,
+) {
     let addr = ([0, 0, 0, 0], port).into();
     let ctx_clone = ctx.clone();
     let make_svc = make_service_fn(|_| {
@@ -337,10 +327,22 @@ pub async fn start_serving_prometheus_metrics(port: u16, registry: Registry, ctx
             }))
         }
     });
-    let serve_future = Server::bind(&addr).serve(make_svc);
+    let shutdown_future = async move {
+        loop {
+            if abort_signal.load(Ordering::SeqCst) {
+                break;
+            }
+            sleep(Duration::from_millis(500)).await;
+        }
+    };
+    let serve_future = Server::bind(&addr)
+        .serve(make_svc)
+        .with_graceful_shutdown(shutdown_future);
     try_info!(ctx, "Prometheus monitoring: listening on port {}", port);
     if let Err(err) = serve_future.await {
         try_warn!(ctx, "Prometheus monitoring: server error: {}", err);
+    } else {
+        try_info!(ctx, "Prometheus monitoring: shutdown complete");
     }
 }
 

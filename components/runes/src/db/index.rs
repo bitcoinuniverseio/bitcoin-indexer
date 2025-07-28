@@ -10,8 +10,9 @@ use bitcoind::{
     types::{BitcoinBlockData, BitcoinTransactionData},
     utils::Context,
 };
+use deadpool_postgres::Client;
 use ordinals_parser::{Artifact, Runestone};
-use tokio_postgres::Client;
+use postgres::pg_begin;
 
 use super::{cache::index_cache::IndexCache, pg_get_max_rune_number, pg_roll_back_block};
 use crate::{
@@ -34,7 +35,7 @@ fn bitcoin_tx_from_chainhook_tx(
     block: &BitcoinBlockData,
     tx: &BitcoinTransactionData,
 ) -> (Transaction, HashMap<u32, ScriptBuf>, Option<u32>, u32) {
-    let mut outputs = vec![];
+    let mut outputs = Vec::with_capacity(tx.metadata.outputs.len());
     let mut eligible_outputs = HashMap::new();
     let mut first_eligible_output: Option<u32> = None;
     for (i, output) in tx.metadata.outputs.iter().enumerate() {
@@ -75,7 +76,7 @@ pub async fn index_block(
     let stopwatch = std::time::Instant::now();
     let block_hash = &block.block_identifier.hash;
     let block_height = block.block_identifier.index;
-    try_info!(ctx, "Starting runes indexing for block #{block_height}...");
+    try_info!(ctx, "RunesIndexer indexing block #{block_height}...");
 
     // Track operation counts
     let mut etching_count: u64 = 0;
@@ -85,11 +86,8 @@ pub async fn index_block(
     let mut cenotaph_mint_count: u64 = 0;
     let mut cenotaph_count: u64 = 0;
 
-    let mut db_tx = pg_client
-        .transaction()
-        .await
-        .expect("Unable to begin block processing pg transaction");
-    index_cache.reset_max_rune_number(&mut db_tx, ctx).await;
+    let mut db_tx = pg_begin(pg_client).await.unwrap();
+    index_cache.reset_max_rune_number(&mut db_tx).await;
 
     // Measure parsing time
     let parsing_start = std::time::Instant::now();
@@ -194,7 +192,7 @@ pub async fn index_block(
 
     // Record metrics
     prometheus.metrics_block_indexed(block_height);
-    let current_rune_number = pg_get_max_rune_number(pg_client, ctx).await;
+    let current_rune_number = pg_get_max_rune_number(pg_client).await;
     prometheus.metrics_rune_indexed(current_rune_number as u64);
     prometheus.metrics_record_runes_per_block(etching_count);
 
@@ -203,8 +201,8 @@ pub async fn index_block(
     prometheus.metrics_record_block_processing_time(elapsed.as_millis() as f64);
     try_info!(
         ctx,
-        "Completed runes indexing for block #{block_height}: found {etching_count} etchings, {mint_count} mints, {edict_count} edicts, and {cenotaph_count} cenotaphs, of which {cenotaph_etching_count} etchings and {cenotaph_mint_count} mints in {elapsed:.0}s",
-        elapsed = elapsed.as_secs_f32()
+        "RunesIndexer indexed block #{block_height}: {etching_count} etchings, {mint_count} mints, {edict_count} edicts, {cenotaph_count} cenotaphs ({cenotaph_etching_count} etchings, {cenotaph_mint_count} mints) in {}s",
+        elapsed.as_secs_f32()
     );
 }
 
