@@ -20,6 +20,7 @@ pub struct Config {
     pub resources: ResourcesConfig,
     pub storage: StorageConfig,
     pub metrics: Option<MetricsConfig>,
+    pub redis: Option<RedisConfig>,
 }
 
 #[derive(Clone, Debug)]
@@ -76,6 +77,13 @@ pub struct StorageConfig {
 pub struct MetricsConfig {
     pub enabled: bool,
     pub prometheus_port: u16,
+}
+
+#[derive(Clone, Debug)]
+pub struct RedisConfig {
+    pub enabled: bool,
+    pub url: String,
+    pub queue: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -155,6 +163,11 @@ impl Config {
             metrics: Some(MetricsConfig {
                 enabled: true,
                 prometheus_port: 9153,
+            }),
+            redis: Some(RedisConfig {
+                enabled: true,
+                url: "redis://127.0.0.1:6379/0".into(),
+                queue: "bitcoin:index-progress".into(),
             }),
         }
     }

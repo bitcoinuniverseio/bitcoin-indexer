@@ -7,9 +7,10 @@ use bitcoin::Network;
 
 use crate::{
     BitcoindConfig, Config, MetricsConfig, OrdinalsBrc20Config, OrdinalsConfig,
-    OrdinalsMetaProtocolsConfig, PgDatabaseConfig, ResourcesConfig, RunesConfig, StorageConfig,
-    DEFAULT_BITCOIND_RPC_THREADS, DEFAULT_BITCOIND_RPC_TIMEOUT, DEFAULT_INDEXER_CHANNEL_CAPACITY,
-    DEFAULT_LRU_CACHE_SIZE, DEFAULT_MEMORY_AVAILABLE, DEFAULT_ULIMIT, DEFAULT_WORKING_DIR,
+    OrdinalsMetaProtocolsConfig, PgDatabaseConfig, RedisConfig, ResourcesConfig, RunesConfig,
+    StorageConfig, DEFAULT_BITCOIND_RPC_THREADS, DEFAULT_BITCOIND_RPC_TIMEOUT,
+    DEFAULT_INDEXER_CHANNEL_CAPACITY, DEFAULT_LRU_CACHE_SIZE, DEFAULT_MEMORY_AVAILABLE,
+    DEFAULT_ULIMIT, DEFAULT_WORKING_DIR,
 };
 
 #[derive(Deserialize, Clone, Debug)]
@@ -92,6 +93,13 @@ pub struct MetricsConfigToml {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct RedisConfigToml {
+    pub enabled: bool,
+    pub url: String,
+    pub queue: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct ConfigToml {
     pub storage: StorageConfigToml,
     pub ordinals: Option<OrdinalsConfigToml>,
@@ -99,6 +107,7 @@ pub struct ConfigToml {
     pub bitcoind: BitcoindConfigToml,
     pub resources: ResourcesConfigToml,
     pub metrics: Option<MetricsConfigToml>,
+    pub redis: Option<RedisConfigToml>,
 }
 
 impl ConfigToml {
@@ -160,6 +169,14 @@ impl ConfigToml {
             enabled: metrics.enabled,
             prometheus_port: metrics.prometheus_port,
         });
+        let redis = match toml.redis {
+            Some(redis) => Some(RedisConfig {
+                enabled: true,
+                url: redis.url,
+                queue: redis.queue,
+            }),
+            None => None,
+        };
 
         let config = Config {
             storage: StorageConfig {
@@ -198,6 +215,7 @@ impl ConfigToml {
                 zmq_url: toml.bitcoind.zmq_url,
             },
             metrics,
+            redis,
         };
         Ok(config)
     }
