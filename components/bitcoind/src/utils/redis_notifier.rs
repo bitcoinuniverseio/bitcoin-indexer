@@ -1,5 +1,6 @@
 use std::sync::{Mutex, OnceLock};
 
+use bitcoin::Network;
 use config::{BitcoindConfig, RedisConfig};
 use redis::{AsyncCommands, Client};
 use serde::Serialize;
@@ -44,11 +45,11 @@ impl RedisNotifier {
 
     fn network_str(bitcoind: &BitcoindConfig) -> &'static str {
         match bitcoind.network {
-            bitcoin::Network::Bitcoin => "mainnet",
-            bitcoin::Network::Testnet | bitcoin::Network::Testnet4 => "testnet",
-            bitcoin::Network::Signet => "signet",
-            bitcoin::Network::Regtest => "regtest",
-            _ => "unknown",
+            Network::Bitcoin => "mainnet",
+            Network::Testnet => todo!(),
+            Network::Signet => todo!(),
+            Network::Regtest => todo!(),
+            _ => todo!(),
         }
     }
 

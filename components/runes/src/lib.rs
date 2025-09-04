@@ -52,6 +52,13 @@ async fn new_runes_indexer_runloop(
                 let _profiler = dhat::Profiler::new_heap();
 
                 let mut index_cache = IndexCache::new(&config_moved, &pg_pool_moved).await;
+
+                let redis_notifier = if let Some(redis_cfg) = &config_moved.redis {
+                    Some(RedisNotifier::new(redis_cfg)?)
+                } else {
+                    None
+                };
+
                 loop {
                     if abort_signal_moved.load(Ordering::SeqCst) {
                         break;
@@ -88,8 +95,7 @@ async fn new_runes_indexer_runloop(
                                     .await;
                                 }
                                 // Notify redis with both apply and rollback blocks, if enabled
-                                if let Some(redis_cfg) = &config_moved.redis {
-                                    let notifier = RedisNotifier::new(redis_cfg)?;
+                                if let Some(notifier) = &redis_notifier {
                                     let apply_refs: Vec<BlockIdentifier> = apply_blocks
                                         .iter()
                                         .map(|b| b.block_identifier.clone())
