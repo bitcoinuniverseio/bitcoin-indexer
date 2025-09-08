@@ -142,36 +142,32 @@ impl RedisNotifier {
         // Use scoped connections to ensure they're properly dropped after use
         match &self.client {
             RedisClientKind::Single(client) => {
-                let result = {
-                    let mut conn: MultiplexedConnection = client
-                        .get_multiplexed_tokio_connection()
-                        .await
-                        .map_err(|e| format!("unable to get redis connection: {e}"))?;
-                    redis::cmd("RPUSH")
-                        .arg(&self.queue)
-                        .arg(payload)
-                        .query_async(&mut conn)
-                        .await
-                        .map(|_: ()| ())
-                        .map_err(|e| format!("unable to rpush redis message: {e}"))
-                }; // Connection is dropped here
-                result
+                // Connection is scoped and dropped at the end of this block
+                let mut conn: MultiplexedConnection = client
+                    .get_multiplexed_tokio_connection()
+                    .await
+                    .map_err(|e| format!("unable to get redis connection: {e}"))?;
+                redis::cmd("RPUSH")
+                    .arg(&self.queue)
+                    .arg(payload)
+                    .query_async(&mut conn)
+                    .await
+                    .map(|_: ()| ())
+                    .map_err(|e| format!("unable to rpush redis message: {e}"))
             }
             RedisClientKind::Cluster(client) => {
-                let result = {
-                    let mut conn = client
-                        .get_async_connection()
-                        .await
-                        .map_err(|e| format!("unable to get redis cluster connection: {e}"))?;
-                    redis::cmd("RPUSH")
-                        .arg(&self.queue)
-                        .arg(payload)
-                        .query_async(&mut conn)
-                        .await
-                        .map(|_: ()| ())
-                        .map_err(|e| format!("unable to rpush redis message: {e}"))
-                }; // Connection is dropped here
-                result
+                // Connection is scoped and dropped at the end of this block
+                let mut conn = client
+                    .get_async_connection()
+                    .await
+                    .map_err(|e| format!("unable to get redis cluster connection: {e}"))?;
+                redis::cmd("RPUSH")
+                    .arg(&self.queue)
+                    .arg(payload)
+                    .query_async(&mut conn)
+                    .await
+                    .map(|_: ()| ())
+                    .map_err(|e| format!("unable to rpush redis message: {e}"))
             }
         }
     }
