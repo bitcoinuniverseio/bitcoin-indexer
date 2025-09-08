@@ -79,11 +79,21 @@ pub struct MetricsConfig {
     pub prometheus_port: u16,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct RedisConfig {
     pub enabled: bool,
     pub url: String,
     pub queue: String,
+    pub database: Option<u8>,                // Redis database number (0-15)
+    pub cluster_nodes: Option<Vec<String>>,  // for Redis Cluster
+    pub sentinel_nodes: Option<Vec<String>>, // for Redis Sentinel
+    pub sentinel_master_name: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub retry_attempts: Option<u32>,
+    pub retry_backoff_ms: Option<u64>,
+    pub connection_timeout_ms: Option<u64>,
+    pub command_timeout_ms: Option<u64>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -168,6 +178,16 @@ impl Config {
                 enabled: true,
                 url: "redis://127.0.0.1:6379/0".into(),
                 queue: "bitcoin:index-progress".into(),
+                database: None, // defaults to 0
+                cluster_nodes: None,
+                sentinel_nodes: None,
+                sentinel_master_name: None,
+                username: None,
+                password: None,
+                retry_attempts: None,
+                retry_backoff_ms: None,
+                connection_timeout_ms: None,
+                command_timeout_ms: None,
             }),
         }
     }
