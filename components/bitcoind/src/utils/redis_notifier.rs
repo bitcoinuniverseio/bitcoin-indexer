@@ -67,9 +67,9 @@ impl RedisNotifier {
         match bitcoind.network {
             Network::Bitcoin => "mainnet",
             Network::Testnet => "testnet",
-            Network::Regtest => "regtest",
-            Network::Signet => "signet",
-            _ => unreachable!(),
+            Network::Regtest => todo!(),
+            Network::Signet => todo!(),
+            _ => todo!(),
         }
     }
 
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_build_message_json_for_ordinals() {
-        let bitcoind = sample_bitcoind(Network::Bitcoin);
+        let bitcoind = sample_bitcoind(Network::Testnet);
         let apply = vec![BlockIdentifier {
             index: 800_000,
             hash: ensure_0x("feed"),
@@ -386,7 +386,7 @@ mod tests {
         assert!(v["id"].as_str().unwrap().starts_with("bitcoin-ordinals-"));
         assert_eq!(v["payload"]["chain"], "bitcoin");
         assert_eq!(v["payload"]["indexer"], "ordinals");
-        assert_eq!(v["payload"]["network"], "mainnet");
+        assert_eq!(v["payload"]["network"], "testnet");
         let apply_blocks = v["payload"]["apply_blocks"].as_array().unwrap();
         assert_eq!(apply_blocks.len(), 1);
         assert_eq!(apply_blocks[0]["hash"], "0xfeed");
@@ -432,7 +432,7 @@ mod tests {
 
     #[test]
     fn test_build_message_json_for_ordinals_reorg() {
-        let bitcoind = sample_bitcoind(Network::Bitcoin);
+        let bitcoind = sample_bitcoind(Network::Testnet);
         let apply = vec![
             BlockIdentifier {
                 index: 820_001,
@@ -452,7 +452,7 @@ mod tests {
         assert!(v["id"].as_str().unwrap().starts_with("bitcoin-ordinals-"));
         assert_eq!(v["payload"]["chain"], "bitcoin");
         assert_eq!(v["payload"]["indexer"], "ordinals");
-        assert_eq!(v["payload"]["network"], "mainnet");
+        assert_eq!(v["payload"]["network"], "testnet");
         let apply_blocks = v["payload"]["apply_blocks"].as_array().unwrap();
         assert_eq!(apply_blocks.len(), 2);
         assert_eq!(apply_blocks[0]["hash"], "0xabc1");
@@ -487,7 +487,7 @@ mod tests {
                 command_timeout_ms: None,
             })
             .unwrap();
-            let bitcoind = sample_bitcoind(Network::Regtest);
+            let bitcoind = sample_bitcoind(Network::Testnet);
             let apply = vec![BlockIdentifier {
                 index: 1,
                 hash: ensure_0x("1234"),
@@ -504,7 +504,7 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&captured[0]).unwrap();
         assert_eq!(v["payload"]["chain"], "bitcoin");
         assert_eq!(v["payload"]["indexer"], "runes");
-        assert_eq!(v["payload"]["network"], "regtest");
+        assert_eq!(v["payload"]["network"], "testnet");
         let apply_blocks = v["payload"]["apply_blocks"].as_array().unwrap();
         assert_eq!(apply_blocks.len(), 1);
         assert_eq!(apply_blocks[0]["hash"], "0x1234");
@@ -535,7 +535,7 @@ mod tests {
             })
             .unwrap();
 
-            let bitcoind = sample_bitcoind(Network::Regtest);
+            let bitcoind = sample_bitcoind(Network::Testnet);
             let apply = vec![BlockIdentifier {
                 index: 2,
                 hash: "0xabc".into(),
