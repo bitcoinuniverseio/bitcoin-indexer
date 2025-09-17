@@ -40,6 +40,7 @@ pub struct PrometheusMonitoring {
     pub runes_cenotaph_operations_per_block: UInt64Gauge,
     pub runes_cenotaph_etching_operations_per_block: UInt64Gauge,
     pub runes_cenotaph_mint_operations_per_block: UInt64Gauge,
+    pub runes_etching_inputs_checked_per_block: UInt64Gauge,
 
     // Registry
     pub registry: Registry,
@@ -137,6 +138,11 @@ impl PrometheusMonitoring {
             "runes_cenotaph_mint_operations_per_block",
             "Number of cenotaph Runes mints processed per block",
         );
+        let runes_etching_inputs_checked_per_block = Self::create_and_register_uint64_gauge(
+            &registry,
+            "runes_etching_inputs_checked_per_block",
+            "Number of inputs checked for rune commitment per block",
+        );
 
         PrometheusMonitoring {
             last_indexed_block_height,
@@ -152,6 +158,7 @@ impl PrometheusMonitoring {
             runes_cenotaph_operations_per_block,
             runes_cenotaph_etching_operations_per_block,
             runes_cenotaph_mint_operations_per_block,
+            runes_etching_inputs_checked_per_block,
             registry,
         }
     }
@@ -265,6 +272,10 @@ impl PrometheusMonitoring {
     pub fn metrics_record_runes_cenotaph_mint_per_block(&self, cenotaph_mint_count: u64) {
         self.runes_cenotaph_mint_operations_per_block
             .set(cenotaph_mint_count);
+    }
+    pub fn metrics_record_runes_etching_inputs_checked_per_block(&self, inputs_count: u64) {
+        self.runes_etching_inputs_checked_per_block
+            .set(inputs_count);
     }
 }
 
@@ -747,6 +758,35 @@ mod tests {
             gauge.get_value(),
             100.0,
             "Highest rune number indexed should be 100"
+        );
+    }
+
+    #[test]
+    fn test_runes_etching_inputs_checked_per_block_metric() {
+        let monitoring = PrometheusMonitoring::new();
+
+        // Record inputs checked for different blocks
+        monitoring.metrics_record_runes_etching_inputs_checked_per_block(5);
+        monitoring.metrics_record_runes_etching_inputs_checked_per_block(10);
+        monitoring.metrics_record_runes_etching_inputs_checked_per_block(3);
+
+        // Get the gauge values using the registry
+        let metrics = monitoring.registry.gather();
+
+        // Find the runes_etching_inputs_checked_per_block metric
+        let metric_family = metrics
+            .iter()
+            .find(|mf| mf.get_name() == "runes_etching_inputs_checked_per_block")
+            .expect("Should find runes_etching_inputs_checked_per_block metric");
+
+        let metric = metric_family.get_metric().first().unwrap();
+        let gauge = metric.get_gauge();
+
+        // Verify the gauge value (should be the last value set)
+        assert_eq!(
+            gauge.get_value(),
+            3.0,
+            "Should have recorded 3 as the last value"
         );
     }
 }
