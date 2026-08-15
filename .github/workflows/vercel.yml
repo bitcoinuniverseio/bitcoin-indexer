@@ -11,6 +11,10 @@ on:
       - beta
       - develop
   pull_request:
+    branches:
+      - main
+      - beta
+      - develop
   release:
     types:
       - published
