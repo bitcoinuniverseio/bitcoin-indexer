@@ -2,6 +2,10 @@ name: PR Differences Mutants
 
 on:
   pull_request:
+    branches:
+      - main
+      - beta
+      - develop
     types:
       - opened
       - reopened
