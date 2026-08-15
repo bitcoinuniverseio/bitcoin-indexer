@@ -78,7 +78,6 @@ pub async fn augment_block_with_transfers(
             &mut persisted_satpoints,
             &block.block_identifier,
             &network,
-            db_tx,
             ctx,
         )
         .await?;
@@ -170,7 +169,6 @@ pub async fn augment_transaction_with_ordinal_transfers(
     persisted_satpoints: &mut HashMap<String, Vec<WatchedSatpoint>>,
     block_identifier: &BlockIdentifier,
     network: &Network,
-    db_tx: &Transaction<'_>,
     ctx: &Context,
 ) -> Result<(), String> {
     // The transfers are inserted in storage after the inscriptions.
