@@ -240,9 +240,7 @@ pub async fn augment_transaction_with_ordinal_transfers(
             };
             // Keep an in-memory copy of this watchpoint at its new tx output for later retrieval.
             let (output, _) = parse_output_and_offset_from_satpoint(&satpoint_post_transfer)?;
-            let entry = block_transferred_satpoints
-                .entry(output)
-                .or_insert(vec![]);
+            let entry = block_transferred_satpoints.entry(output).or_insert(vec![]);
             entry.push(watched_satpoint.clone());
 
             try_info!(
