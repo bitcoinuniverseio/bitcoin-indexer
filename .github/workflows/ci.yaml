@@ -164,7 +164,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo install --force cargo-tarpaulin
+          cargo install --force cargo-tarpaulin --locked
           cargo tarpaulin --skip-clean --out lcov -- --test-threads=1
 
       - name: Upload coverage reports to Codecov
