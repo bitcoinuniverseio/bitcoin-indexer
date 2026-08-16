@@ -20,7 +20,7 @@ use super::inscription_sequencing::get_bitcoin_network;
 pub const UNBOUND_INSCRIPTION_SATPOINT: &str =
     "0000000000000000000000000000000000000000000000000000000000000000:0";
 
-#[derive(Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Ord, PartialOrd, PartialEq, Eq)]
 pub struct WatchedSatpoint {
     pub ordinal_number: u64,
     pub offset: u64,
