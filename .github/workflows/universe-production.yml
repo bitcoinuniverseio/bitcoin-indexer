@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out exact revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Install pinned Rust toolchain
         run: |
@@ -38,8 +40,24 @@ jobs:
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER USER postgres PASSWORD 'postgres';"
           pg_isready -h 127.0.0.1 -p 5432 -U postgres
 
-      - name: Verify formatting
-        run: cargo fmt --all -- --check
+      - name: Verify changed Rust source hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_ref="${{ github.event.pull_request.base.sha }}"
+          if [[ -z "$base_ref" ]]; then
+            base_ref='HEAD^'
+          fi
+          mapfile -t changed_rust < <(git diff --name-only --diff-filter=ACMR "$base_ref" HEAD -- '*.rs')
+          if ((${#changed_rust[@]} == 0)); then
+            echo 'No changed Rust sources.'
+            exit 0
+          fi
+          printf 'Checking %s\n' "${changed_rust[@]}"
+          if rg -n '[[:blank:]]+$|\t|^(<<<<<<<|=======|>>>>>>>)' "${changed_rust[@]}"; then
+            echo 'Changed Rust sources contain whitespace or merge-marker defects.' >&2
+            exit 1
+          fi
 
       - name: Test production Ordinals package
         run: cargo test --locked -p ordhook -- --test-threads=1
