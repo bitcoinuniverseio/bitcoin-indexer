@@ -11,6 +11,10 @@ on:
       - beta
       - develop
   pull_request:
+    branches:
+      - main
+      - beta
+      - develop
   release:
     types:
       - published
@@ -18,6 +22,9 @@ on:
 
 jobs:
   openapi-publish:
+    # The Universe fork ships the Windows indexer binary and intentionally has
+    # no Hiro Vercel project or deployment credentials.
+    if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
     runs-on: ubuntu-latest
 
     steps:
