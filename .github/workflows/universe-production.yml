@@ -1,0 +1,80 @@
+name: Universe production
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universe-production-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ordinals-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ORDHOOK_TEST_PG_DATABASE: postgres
+      ORDHOOK_TEST_PG_HOST: 127.0.0.1
+      ORDHOOK_TEST_PG_PORT: "5432"
+      ORDHOOK_TEST_PG_USER: postgres
+      ORDHOOK_TEST_PG_PASSWORD: postgres
+    steps:
+      - name: Check out exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.85.0 --profile minimal --component rustfmt
+          rustup override set 1.85.0
+          rustc --version
+          cargo --version
+
+      - name: Start isolated PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER USER postgres PASSWORD 'postgres';"
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres
+
+      - name: Verify changed Rust source hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_ref="${{ github.event.pull_request.base.sha }}"
+          if [[ -z "$base_ref" ]]; then
+            base_ref='HEAD^'
+          fi
+          mapfile -t changed_rust < <(git diff --name-only --diff-filter=ACMR "$base_ref" HEAD -- '*.rs')
+          if ((${#changed_rust[@]} == 0)); then
+            echo 'No changed Rust sources.'
+            exit 0
+          fi
+          printf 'Checking %s\n' "${changed_rust[@]}"
+          if rg -n '[[:blank:]]+$|\t|^(<<<<<<<|=======|>>>>>>>)' "${changed_rust[@]}"; then
+            echo 'Changed Rust sources contain whitespace or merge-marker defects.' >&2
+            exit 1
+          fi
+
+      - name: Test production Ordinals package
+        run: cargo test --locked -p ordhook -- --test-threads=1
+
+      - name: Build production binary
+        run: cargo build --locked --release -p cli --bin bitcoin-indexer
+
+      - name: Verify high-severity advisory reachability
+        shell: bash
+        run: |
+          set -euo pipefail
+          if cargo tree --locked -p cli -i quinn-proto 2>&1 | grep -q '^quinn-proto '; then
+            echo 'quinn-proto unexpectedly entered the production binary graph' >&2
+            exit 1
+          fi
+          if rg -n -i '\bcrl\b|CertRevocation|revocation' components --glob '*.rs'; then
+            echo 'CRL handling entered source; re-evaluate rustls-webpki RUSTSEC-2026-0104' >&2
+            exit 1
+          fi
+          sha256sum target/release/bitcoin-indexer
