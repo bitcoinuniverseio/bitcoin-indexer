@@ -1,145 +1,101 @@
 use std::{collections::HashMap, process, str::FromStr};
 
+use bitcoind::{try_error, try_info, types::BlockIdentifier, utils::Context};
 use cache::input_rune_balance::InputRuneBalance;
-use chainhook_postgres::types::{PgBigIntU32, PgNumericU128, PgNumericU64};
-use chainhook_sdk::utils::Context;
 use config::Config;
+use deadpool_postgres::GenericClient;
 use models::{
     db_balance_change::DbBalanceChange, db_ledger_entry::DbLedgerEntry, db_rune::DbRune,
     db_supply_change::DbSupplyChange,
 };
-use ordinals::RuneId;
+use ordinals_parser::RuneId;
+use postgres::{
+    pg_connect_with_retry,
+    types::{PgBigIntU32, PgNumericU128, PgNumericU64},
+};
 use refinery::embed_migrations;
-use tokio_postgres::{types::ToSql, Client, Error, GenericClient, NoTls, Transaction};
-
-use crate::{try_error, try_info};
+use tokio_postgres::{types::ToSql, Error, Transaction};
 
 pub mod cache;
 pub mod index;
 pub mod models;
 
 embed_migrations!("../../migrations/runes");
-
-async fn pg_run_migrations(pg_client: &mut Client, ctx: &Context) {
-    try_info!(ctx, "Running postgres migrations");
+pub async fn migrate(pg_client: &mut tokio_postgres::Client, ctx: &Context) {
+    try_info!(ctx, "RunesDb running postgres migrations...");
     match migrations::runner()
+        .set_abort_divergent(false)
+        .set_abort_missing(false)
         .set_migration_table_name("pgmigrations")
         .run_async(pg_client)
         .await
     {
-        Ok(_) => {}
+        Ok(_) => {
+            try_info!(ctx, "RunesDb postgres migrations complete");
+        }
         Err(e) => {
-            try_error!(ctx, "Error running pg migrations: {}", e.to_string());
+            try_error!(ctx, "RunesDb error running pg migrations: {e}");
             process::exit(1);
         }
     };
-    try_info!(ctx, "Postgres migrations complete");
 }
 
-pub async fn pg_connect(config: &Config, run_migrations: bool, ctx: &Context) -> Client {
-    let db_config = &config.runes.as_ref().unwrap().db;
-    let mut pg_config = tokio_postgres::Config::new();
-    pg_config
-        .dbname(&db_config.dbname)
-        .host(&db_config.host)
-        .port(db_config.port)
-        .user(&db_config.user);
-    if let Some(password) = db_config.password.as_ref() {
-        pg_config.password(password);
-    }
-
-    try_info!(
-        ctx,
-        "Connecting to postgres at {}:{}",
-        db_config.host,
-        db_config.port
-    );
-    let mut pg_client: Client;
-    loop {
-        match pg_config.connect(NoTls).await {
-            Ok((client, connection)) => {
-                tokio::spawn(async move {
-                    if let Err(e) = connection.await {
-                        eprintln!("Postgres connection error: {}", e.to_string());
-                        process::exit(1);
-                    }
-                });
-                pg_client = client;
-                break;
-            }
-            Err(e) => {
-                try_error!(ctx, "Error connecting to postgres: {}", e.to_string());
-                std::thread::sleep(std::time::Duration::from_secs(1));
-            }
-        }
-    }
-    if run_migrations {
-        pg_run_migrations(&mut pg_client, ctx).await;
-    }
-    pg_client
+pub async fn run_migrations(config: &Config, ctx: &Context) {
+    let mut pg_client = pg_connect_with_retry(&config.runes.as_ref().unwrap().db).await;
+    migrate(&mut pg_client, ctx).await;
 }
 
 pub async fn pg_insert_runes(
-    rows: &Vec<DbRune>,
+    rows: &[DbRune],
     db_tx: &mut Transaction<'_>,
     ctx: &Context,
 ) -> Result<bool, Error> {
-    for chunk in rows.chunks(500) {
-        let mut arg_num = 1;
-        let mut arg_str = String::new();
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
-        for row in chunk.iter() {
-            arg_str.push_str("(");
-            for i in 0..19 {
-                arg_str.push_str(format!("${},", arg_num + i).as_str());
-            }
-            arg_str.pop();
-            arg_str.push_str("),");
-            arg_num += 19;
-            params.push(&row.id);
-            params.push(&row.number);
-            params.push(&row.name);
-            params.push(&row.spaced_name);
-            params.push(&row.block_hash);
-            params.push(&row.block_height);
-            params.push(&row.tx_index);
-            params.push(&row.tx_id);
-            params.push(&row.divisibility);
-            params.push(&row.premine);
-            params.push(&row.symbol);
-            params.push(&row.terms_amount);
-            params.push(&row.terms_cap);
-            params.push(&row.terms_height_start);
-            params.push(&row.terms_height_end);
-            params.push(&row.terms_offset_start);
-            params.push(&row.terms_offset_end);
-            params.push(&row.turbo);
-            params.push(&row.timestamp);
-        }
-        arg_str.pop();
-        match db_tx
+    for row in rows.iter() {
+        let params: Vec<&(dyn ToSql + Sync)> = vec![
+            &row.id,
+            &row.name,
+            &row.spaced_name,
+            &row.block_hash,
+            &row.block_height,
+            &row.tx_index,
+            &row.tx_id,
+            &row.divisibility,
+            &row.premine,
+            &row.symbol,
+            &row.terms_amount,
+            &row.terms_cap,
+            &row.terms_height_start,
+            &row.terms_height_end,
+            &row.terms_offset_start,
+            &row.terms_offset_end,
+            &row.turbo,
+            &row.cenotaph,
+            &row.timestamp,
+        ];
+
+        if let Err(e) = db_tx
             .query(
-                &format!("INSERT INTO runes
-                    (id, number, name, spaced_name, block_hash, block_height, tx_index, tx_id, divisibility, premine, symbol,
-                    terms_amount, terms_cap, terms_height_start, terms_height_end, terms_offset_start, terms_offset_end, turbo,
-                    timestamp) VALUES {}
-                    ON CONFLICT (name) DO NOTHING", arg_str),
+                "INSERT INTO runes \
+                   (id, number, name, spaced_name, block_hash, block_height, tx_index, tx_id, divisibility, premine, symbol, \
+                    terms_amount, terms_cap, terms_height_start, terms_height_end, terms_offset_start, terms_offset_end, turbo, cenotaph, timestamp) \
+                 SELECT \
+                   $1, (SELECT COALESCE(MAX(number), 0) + 1 FROM runes), $2, $3, $4, $5, $6, $7, $8, $9, $10, \
+                   $11, $12, $13, $14, $15, $16, $17, $18, $19 \
+                 WHERE NOT EXISTS (SELECT 1 FROM runes WHERE name = $2) \
+                 ON CONFLICT (name) DO NOTHING",
                 &params,
             )
             .await
         {
-            Ok(_) => {}
-            Err(e) => {
-                try_error!(ctx, "Error inserting runes: {:?}", e);
-                process::exit(1);
-            }
-        };
+            try_error!(ctx, "Error inserting rune: {:?}", e);
+            process::exit(1);
+        }
     }
     Ok(true)
 }
 
 pub async fn pg_insert_supply_changes(
-    rows: &Vec<DbSupplyChange>,
+    rows: &[DbSupplyChange],
     db_tx: &mut Transaction<'_>,
     ctx: &Context,
 ) -> Result<bool, Error> {
@@ -216,7 +172,7 @@ pub async fn pg_insert_supply_changes(
 }
 
 pub async fn pg_insert_balance_changes(
-    rows: &Vec<DbBalanceChange>,
+    rows: &[DbBalanceChange],
     increase: bool,
     db_tx: &mut Transaction<'_>,
     ctx: &Context,
@@ -281,7 +237,7 @@ pub async fn pg_insert_balance_changes(
 }
 
 pub async fn pg_insert_ledger_entries(
-    rows: &Vec<DbLedgerEntry>,
+    rows: &[DbLedgerEntry],
     db_tx: &mut Transaction<'_>,
     ctx: &Context,
 ) -> Result<bool, Error> {
@@ -290,7 +246,7 @@ pub async fn pg_insert_ledger_entries(
         let mut arg_str = String::new();
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
         for row in chunk.iter() {
-            arg_str.push_str("(");
+            arg_str.push('(');
             for i in 0..12 {
                 arg_str.push_str(format!("${},", arg_num + i).as_str());
             }
@@ -362,7 +318,7 @@ pub async fn pg_roll_back_block(block_height: u64, db_tx: &mut Transaction<'_>, 
         .expect("error rolling back runes");
 }
 
-pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T, _ctx: &Context) -> u32 {
+pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T) -> u32 {
     let row = client
         .query_opt("SELECT MAX(number) AS max FROM runes", &[])
         .await
@@ -374,17 +330,33 @@ pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T, _ctx: &Context
     max.0
 }
 
-pub async fn pg_get_block_height(client: &mut Client, _ctx: &Context) -> Option<u64> {
+pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {
     let row = client
         .query_opt("SELECT MAX(block_height) AS max FROM ledger", &[])
         .await
         .expect("error getting max block height")?;
     let max: Option<PgNumericU64> = row.get("max");
-    if let Some(max) = max {
-        Some(max.0)
-    } else {
-        None
-    }
+    max.map(|max| max.0)
+}
+
+pub async fn get_chain_tip<T: GenericClient>(client: &T) -> Option<BlockIdentifier> {
+    let row = client
+        .query_opt(
+            "SELECT block_height, block_hash
+            FROM ledger
+            ORDER BY block_height DESC
+            LIMIT 1",
+            &[],
+        )
+        .await
+        .expect("get_chain_tip");
+    let row = row?;
+    let block_height: PgNumericU64 = row.get("block_height");
+    let block_hash: String = row.get("block_hash");
+    Some(BlockIdentifier {
+        index: block_height.0,
+        hash: format!("0x{block_hash}"),
+    })
 }
 
 pub async fn pg_get_rune_by_id(
@@ -402,9 +374,7 @@ pub async fn pg_get_rune_by_id(
             process::exit(1);
         }
     };
-    let Some(row) = row else {
-        return None;
-    };
+    let row = row?;
     Some(DbRune::from_pg_row(&row))
 }
 
@@ -430,9 +400,7 @@ pub async fn pg_get_rune_total_mints(
             process::exit(1);
         }
     };
-    let Some(row) = row else {
-        return None;
-    };
+    let row = row?;
     let minted: PgNumericU128 = row.get("total_mints");
     Some(minted.0)
 }
@@ -521,24 +489,29 @@ pub async fn pg_get_input_rune_balances(
 }
 
 #[cfg(test)]
-pub async fn pg_test_client(run_migrations: bool, ctx: &Context) -> Client {
-    let (mut client, connection) =
-        tokio_postgres::connect("host=localhost user=postgres password=postgres", NoTls)
-            .await
-            .unwrap();
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("test connection error: {}", e);
-        }
-    });
-    if run_migrations {
-        pg_run_migrations(&mut client, ctx).await;
+pub fn pg_test_config() -> config::PgDatabaseConfig {
+    config::PgDatabaseConfig {
+        dbname: "postgres".to_string(),
+        host: "localhost".to_string(),
+        port: 5432,
+        user: "postgres".to_string(),
+        password: Some("postgres".to_string()),
+        search_path: None,
+        pool_max_size: None,
     }
-    client
 }
 
 #[cfg(test)]
-pub async fn pg_test_roll_back_migrations(pg_client: &mut Client, ctx: &Context) {
+pub async fn pg_test_client(run_migrations: bool, ctx: &Context) -> tokio_postgres::Client {
+    let mut pg_client = postgres::pg_connect_with_retry(&pg_test_config()).await;
+    if run_migrations {
+        migrate(&mut pg_client, ctx).await;
+    }
+    pg_client
+}
+
+#[cfg(test)]
+pub async fn pg_test_roll_back_migrations(pg_client: &mut tokio_postgres::Client, ctx: &Context) {
     match pg_client
         .batch_execute(
             "

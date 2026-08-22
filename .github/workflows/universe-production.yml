@@ -40,6 +40,9 @@ jobs:
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER USER postgres PASSWORD 'postgres';"
           pg_isready -h 127.0.0.1 -p 5432 -U postgres
 
+      - name: Verify formatting
+        run: cargo fmt --all -- --check
+
       - name: Verify changed Rust source hygiene
         shell: bash
         run: |
@@ -60,7 +63,7 @@ jobs:
           fi
 
       - name: Test production Ordinals package
-        run: cargo test --locked -p ordhook -- --test-threads=1
+        run: cargo test --locked -p ordinals -- --test-threads=1
 
       - name: Build production binary
         run: cargo build --locked --release -p cli --bin bitcoin-indexer
