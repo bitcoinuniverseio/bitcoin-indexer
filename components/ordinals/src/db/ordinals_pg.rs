@@ -246,43 +246,30 @@ pub async fn get_inscriptions_at_block<T: GenericClient>(
     Ok(results)
 }
 
-pub async fn get_inscribed_satpoints_at_tx_inputs<T: GenericClient>(
-    inputs: &Vec<(usize, String)>,
+pub async fn get_inscribed_satpoints_at_outputs<T: GenericClient>(
+    outputs: &Vec<String>,
     client: &T,
-) -> Result<HashMap<usize, Vec<WatchedSatpoint>>, String> {
+) -> Result<HashMap<String, Vec<WatchedSatpoint>>, String> {
     let mut results = HashMap::new();
-    if inputs.is_empty() {
+    if outputs.is_empty() {
         return Ok(results);
     }
-    for chunk in inputs.chunks(500) {
-        let outpoints: Vec<(String, String)> = chunk
-            .iter()
-            .map(|(vin, satpoint)| (vin.to_string(), satpoint.clone()))
-            .collect();
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
-        for (vin, input) in outpoints.iter() {
-            params.push(vin);
-            params.push(input);
-        }
+    for chunk in outputs.chunks(5_000) {
+        let outpoints = chunk.to_vec();
         let rows = client
             .query(
-                &format!(
-                    "WITH inputs (vin, output) AS (VALUES {})
-                    SELECT i.vin, l.ordinal_number, l.\"offset\"
-                    FROM current_locations AS l
-                    INNER JOIN inputs AS i ON i.output = l.output",
-                    utils::multi_row_query_param_str(chunk.len(), 2)
-                ),
-                &params,
+                "SELECT output, ordinal_number, \"offset\"
+                FROM current_locations
+                WHERE output = ANY($1)",
+                &[&outpoints],
             )
             .await
-            .map_err(|e| format!("get_inscriptions_at_tx_inputs: {e}"))?;
+            .map_err(|e| format!("get_inscriptions_at_outputs: {e}"))?;
         for row in rows.iter() {
-            let vin: String = row.get("vin");
-            let vin_key = vin.parse::<usize>().unwrap();
+            let output: String = row.get("output");
             let ordinal_number: PgNumericU64 = row.get("ordinal_number");
             let offset: PgNumericU64 = row.get("offset");
-            let entry = results.entry(vin_key).or_insert(vec![]);
+            let entry = results.entry(output).or_insert(vec![]);
             entry.push(WatchedSatpoint {
                 ordinal_number: ordinal_number.0,
                 offset: offset.0,

@@ -69,11 +69,17 @@ pub async fn pg_reset_db(pg_client: &mut tokio_postgres::Client) -> Result<(), S
 #[cfg(test)]
 pub fn pg_test_config() -> config::PgDatabaseConfig {
     config::PgDatabaseConfig {
-        dbname: "postgres".to_string(),
-        host: "localhost".to_string(),
-        port: 5432,
-        user: "postgres".to_string(),
-        password: Some("postgres".to_string()),
+        dbname: std::env::var("ORDHOOK_TEST_PG_DATABASE")
+            .unwrap_or_else(|_| "postgres".to_string()),
+        host: std::env::var("ORDHOOK_TEST_PG_HOST").unwrap_or_else(|_| "localhost".to_string()),
+        port: std::env::var("ORDHOOK_TEST_PG_PORT")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(5432),
+        user: std::env::var("ORDHOOK_TEST_PG_USER").unwrap_or_else(|_| "postgres".to_string()),
+        password: Some(
+            std::env::var("ORDHOOK_TEST_PG_PASSWORD").unwrap_or_else(|_| "postgres".to_string()),
+        ),
         search_path: None,
         pool_max_size: None,
     }
