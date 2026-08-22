@@ -267,7 +267,7 @@ impl PrometheusMonitoring {
             // Get counts from counts_by_operation table
             let row = brc20_tx
                 .query_opt(
-                    "SELECT 
+                    "SELECT
                         COALESCE(MAX(CASE WHEN operation = 'deploy' THEN count END), 0) AS deploy,
                         COALESCE(MAX(CASE WHEN operation = 'mint' THEN count END), 0) AS mint,
                         COALESCE(MAX(CASE WHEN operation = 'transfer' THEN count END), 0) AS transfer,
