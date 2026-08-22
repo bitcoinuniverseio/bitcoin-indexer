@@ -21,7 +21,7 @@ use crate::{
 pub const UNBOUND_INSCRIPTION_SATPOINT: &str =
     "0000000000000000000000000000000000000000000000000000000000000000:0";
 
-#[derive(Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Ord, PartialOrd, PartialEq, Eq)]
 pub struct WatchedSatpoint {
     pub ordinal_number: u64,
     pub offset: u64,
@@ -56,14 +56,31 @@ pub async fn augment_block_with_transfers(
 ) -> Result<(), String> {
     let network = get_bitcoin_network(&block.metadata.network);
     let mut block_transferred_satpoints = HashMap::new();
+    // Resolve every persisted input in a few bounded block-level queries. The
+    // former transaction-level lookup incurred thousands of database round
+    // trips per mainnet block even though almost all inputs are not inscribed.
+    // Same-block transfers still take precedence through the in-memory cache.
+    let block_inputs = block
+        .transactions
+        .iter()
+        .flat_map(|tx| tx.metadata.inputs.iter())
+        .map(|input| {
+            format_outpoint_to_watch(
+                &input.previous_output.txid,
+                input.previous_output.vout as usize,
+            )
+        })
+        .collect();
+    let mut persisted_satpoints =
+        ordinals_pg::get_inscribed_satpoints_at_outputs(&block_inputs, db_tx).await?;
     for (tx_index, tx) in block.transactions.iter_mut().enumerate() {
         augment_transaction_with_ordinal_transfers(
             tx,
             tx_index,
             &mut block_transferred_satpoints,
+            &mut persisted_satpoints,
             &block.block_identifier,
             &network,
-            db_tx,
             ctx,
             reveals_count,
             transfers_count,
@@ -160,9 +177,9 @@ pub async fn augment_transaction_with_ordinal_transfers(
     tx: &mut BitcoinTransactionData,
     tx_index: usize,
     block_transferred_satpoints: &mut HashMap<String, Vec<WatchedSatpoint>>,
+    persisted_satpoints: &mut HashMap<String, Vec<WatchedSatpoint>>,
     block_identifier: &BlockIdentifier,
     network: &Network,
-    db_tx: &Transaction<'_>,
     ctx: &Context,
     reveals_count: &mut usize,
     transfers_count: &mut usize,
@@ -184,7 +201,6 @@ pub async fn augment_transaction_with_ordinal_transfers(
     // this new block, we'll use a memory cache to keep all sats that have been transferred but have not yet been written into the
     // DB.
     let mut cached_satpoints = HashMap::new();
-    let mut inputs_for_db_lookup = vec![];
     for (vin, input) in tx.metadata.inputs.iter().enumerate() {
         let output_key = format_outpoint_to_watch(
             &input.previous_output.txid,
@@ -193,13 +209,11 @@ pub async fn augment_transaction_with_ordinal_transfers(
         // Look in memory cache, or save for a batched DB lookup later.
         if let Some(watched_satpoints) = block_transferred_satpoints.remove(&output_key) {
             cached_satpoints.insert(vin, watched_satpoints);
-        } else {
-            inputs_for_db_lookup.push((vin, output_key));
+        } else if let Some(watched_satpoints) = persisted_satpoints.remove(&output_key) {
+            cached_satpoints.insert(vin, watched_satpoints);
         }
     }
-    let mut input_satpoints =
-        ordinals_pg::get_inscribed_satpoints_at_tx_inputs(&inputs_for_db_lookup, db_tx).await?;
-    input_satpoints.extend(cached_satpoints);
+    let input_satpoints = cached_satpoints;
 
     // Process all transfers across all inputs.
     for (input_index, input) in tx.metadata.inputs.iter().enumerate() {
