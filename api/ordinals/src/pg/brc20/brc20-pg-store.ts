@@ -140,9 +140,9 @@ export class Brc20PgStore extends BasePgStore {
           : this.sql``
       }
       AND NOT EXISTS (
-          SELECT 1 
+          SELECT 1
           FROM operations o2
-          WHERE o2.inscription_id = o1.inscription_id 
+          WHERE o2.inscription_id = o1.inscription_id
           AND o2.operation = 'transfer_send'
       )
       ORDER BY o1.block_height DESC, o1.tx_index DESC
