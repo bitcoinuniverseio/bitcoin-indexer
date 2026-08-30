@@ -23,7 +23,7 @@ concurrency:
 jobs:
   mutants:
     name: Mutation Testing
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}-mutants/runner=universe-hosted/cpu=2+8/env=production
     defaults:
       run:
         working-directory: ./
