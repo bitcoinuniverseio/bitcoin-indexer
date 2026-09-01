@@ -1,175 +1,108 @@
-       /     /   ▶ Bitcoin Indexer
-      / --- /      Index Bitcoin meta-protocols like Ordinals, BRC-20, and Runes.
-     /     /
+# Bitcoin Indexer
 
-- [Features](#features)
-- [Quick Start](#quick-start)
-  - [Installing](#installing)
-  - [Running the Indexer](#running-the-indexer)
-  - [Running an API](#running-an-api)
-- [Configuration](#configuration)
-- [System Requirements](#system-requirements)
-  - [Postgres](#postgres)
-- [Contribute](#contribute)
-  - [Code of Conduct](#code-of-conduct)
-  - [Contributing Guide](#contributing-guide)
-- [Community](#community)
+Index Bitcoin meta-protocols (Ordinals inscriptions, BRC-20, and Runes) from a Bitcoin Core node
+into Postgres, and read them back over two REST APIs.
 
-***
+This is the Bitcoin Universe fork of [`hirosystems/bitcoin-indexer`](https://github.com/hirosystems/bitcoin-indexer),
+Apache-2.0. See [Upstream relationship](docs/upstream.md) for what that means for versions, tags,
+and support.
 
-# Features
+| | |
+| --- | --- |
+| Language | Rust (workspace, toolchain pinned to 1.85) plus two Node.js APIs |
+| Storage | PostgreSQL, one database per index, plus a local RocksDB block archive for Ordinals |
+| Chain input | Bitcoin Core over JSON-RPC and ZeroMQ |
+| Protocols indexed | Ordinals inscriptions, BRC-20, Runes |
+| Networks | Ordinals and BRC-20: `mainnet`, `testnet`, `signet`, `devnet` (regtest). Runes: `mainnet` only. |
+| Lifecycle in Universe | Experimental. No Bitcoin Universe release tag exists yet. |
 
-**Bitcoin Indexer** is a tool that continuously reads Bitcoin blocks from a connected Bitcoin
-node in order to extract and index meta-protocol data contained within it. Once indexed, data is
-stored in a Postgres DB and can be made available to clients or users via REST APIs.
+## What this is
 
-# Quick Start
+A block-driven indexer. It reads Bitcoin blocks in order, derives protocol state from them, and
+writes that state into Postgres tables that the two bundled read APIs serve. It tracks chain forks
+in memory and rolls indexed blocks back out of Postgres when the node reorganizes.
 
-## Installing
+## What this is not
+
+- **Not a mempool indexer.** It subscribes only to the `hashblock` ZeroMQ topic. Unconfirmed
+  transactions are never read, stored, or served. Every row in every table comes from a mined block.
+- **Not a wallet or a signer.** It holds no keys, builds no transactions, and broadcasts nothing.
+- **Not a general Bitcoin explorer.** It stores protocol state, not a full transaction index.
+- **Not a multi-protocol indexer beyond the three above.** Alkanes, Atomicals, Stamps, TAP, Bitmap,
+  and the rest of the Bitcoin Universe protocol set are indexed elsewhere and are out of scope here.
+- **Not a writable API.** Every route in both APIs is a `GET`. There are no mutation endpoints,
+  and no authentication, because there is nothing to authorize.
+
+## Documentation
+
+| Document | What it answers |
+| --- | --- |
+| [Architecture](docs/architecture.md) | Components, threads, and how a block becomes a row |
+| [Installation](docs/install.md) | Build from source, Docker, system requirements |
+| [Configuration](docs/configuration.md) | Every TOML key and every environment variable |
+| [CLI reference](docs/cli.md) | Every command, flag, and exit behaviour |
+| [Synchronization](docs/synchronization.md) | Initial sync, streaming, start heights, resource use |
+| [Database model](docs/database.md) | Tables, keys, and how migrations run |
+| [Reorgs and mempool](docs/reorgs-and-mempool.md) | Fork tracking, rollback, confirmation depth |
+| [API reference](docs/api/README.md) | Route shape, OpenAPI contracts, caching, errors |
+| [Operations](docs/operations.md) | Metrics, health, alerting, backup, upgrade, recovery |
+| [Performance and sizing](docs/performance.md) | What to provision and what the knobs do |
+| [Security](docs/security.md) | Trust boundaries and what to keep off the public network |
+| [Testing](docs/testing.md) | How to run each suite and what it covers |
+| [Releases and versioning](docs/releases.md) | What CI does in this fork, and what it does not |
+| [Troubleshooting](docs/troubleshooting.md) | Organized by the symptom you actually see |
+| [Upstream relationship](docs/upstream.md) | Fork provenance, vendored code, attribution |
+
+## Quick start
+
+You need a fully synced Bitcoin Core node with JSON-RPC and ZeroMQ `hashblock` enabled, and a
+PostgreSQL server. Full detail is in [Installation](docs/install.md).
 
 ```console
-$ git clone https://github.com/hirosystems/bitcoin-indexer.git
-$ cd bitcoin-indexer
-$ cargo bitcoin-indexer-install
+git clone https://github.com/bitcoinuniverseio/bitcoin-indexer.git
+cd bitcoin-indexer
+cargo bitcoin-indexer-install
 ```
 
-Docker images are also available at https://hub.docker.com/r/hirosystems/bitcoin-indexer
+Generate a configuration file, edit it, then start an index:
 
-Note: You may need to install additional LLVM and Clang dependencies if they are not already available on your system.
-
-## Running the Indexer
-
-The following command will start indexing Ordinals activity and will continue to stream new blocks
-once it reaches the Bitcoin chain tip.
 ```console
-$ bitcoin-indexer ordinals service start --config-path <path>
+bitcoin-indexer config new --mainnet     # writes ./Indexer.toml
+bitcoin-indexer ordinals service start --config-path ./Indexer.toml
 ```
 
-A similar command exists for indexing Runes
+Runes uses the same shape:
+
 ```console
-$ bitcoin-indexer runes service start --config-path <path>
+bitcoin-indexer runes service start --config-path ./Indexer.toml
 ```
 
-A fully synced Bitcoin node is required for indexing to start.
+Then run either read API against the databases the indexer filled. See
+[API reference](docs/api/README.md).
 
-### Running Tests
+## Repository layout
 
-The test suite can be run in a Docker environment that includes all necessary dependencies (PostgreSQL, Rust toolchain, etc.). This ensures consistent test execution across all development environments.
-
-To run the tests:
-
-```bash
-./scripts/run-tests.sh
+```
+components/bitcoind    Block download pipeline, ZeroMQ stream, fork tracking (BlockPool)
+components/ord         Vendored subset of the ord reference implementation, v0.22.2
+components/ordinals    Inscription indexing, BRC-20 meta-protocol, Postgres writes
+components/runes       Runes indexing and Postgres writes
+components/config      TOML configuration parsing and defaults
+components/postgres    Shared connection pool helpers
+components/cli         The `bitcoin-indexer` binary
+migrations/            Refinery SQL migrations, one directory per database
+api/ordinals           Fastify read API for inscriptions and BRC-20
+api/runes              Fastify read API for Runes
+docs/                  This documentation
+dockerfiles/           Container builds and the development Postgres compose file
 ```
 
-This script will:
-1. Start a PostgreSQL container
-2. Build the Bitcoin Indexer Docker image
-3. Run all tests in the Docker environment
-4. Clean up containers after completion
+## Contributing, support, security
 
-For more granular test control, you can run specific test suites using cargo:
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SUPPORT.md](SUPPORT.md)
+- [SECURITY.md](SECURITY.md)
 
-```bash
-# Start docker postgres
-docker compose -f dockerfiles/docker-compose.dev.postgres.yml up -d
+## License
 
-# Run all tests
-cargo test --workspace
-
-# Run tests for a specific component
-cargo test -p components/bitcoind
-
-# Stop and remove docker postgres
-docker compose -f dockerfiles/docker-compose.dev.postgres.yml down -v -t 0
-```
-
-## Running an API
-
-Once the index starts advancing, you can deploy the Ordinals API or Runes API to read the same data
-via REST endpoints.
-
-# Configuration
-
-Indexer configurations are set via a TOML file. To generate a new config file, run this command:
-```console
-$ bitcoin-indexer config new
-```
-
-Postgres database configurations are set like this. Each index will have its own database.
-```toml
-[ordinals.db]
-database = "ordinals"
-host = "localhost"
-port = 5432
-username = "postgres"
-password = "postgres"
-```
-
-Ordinals meta-protocols like BRC-20 are also configured in this file
-```toml
-[ordinals.meta_protocols.brc20]
-enabled = true
-lru_cache_size = 10000
-
-[ordinals.meta_protocols.brc20.db]
-database = "brc20"
-host = "localhost"
-port = 5432
-username = "postgres"
-password = "postgres"
-```
-
-# System Requirements
-
-The Bitcoin Indexer is resource-intensive, demanding significant CPU, memory and disk capabilities.
-As we continue to refine and optimize, keep in mind the following system requirements and
-recommendations to ensure optimal performance:
-
-* CPU: The ordhook tool efficiently utilizes multiple cores when detected at runtime, parallelizing
-tasks to boost performance.
-
-* Memory: A minimum of 16GB RAM is recommended.
-
-* Disk: To enhance I/O performance, SSD or NVMe storage is suggested.
-
-* OS Requirements: Ensure your system allows for a minimum of 4096 open file descriptors.
-Configuration may vary based on your operating system. On certain systems, this can be adjusted
-using the `ulimit` command or the `launchctl limit` command.
-
-## Postgres
-
-To store indexed data, a Postgres database is required per index (ordinals, runes, etc.).
-It is recommended to use Postgres 17+ for optimal performance.
-
-## Bitcoin Node
-
-To index data, a Bitcoin Node is required.
-The indexer officially supports Bitcoin Core versions 0.24.x and 0.25.x.
-
-# Contribute
-
-Development of this product happens in the open on GitHub, and we are grateful
-to the community for contributing bugfixes and improvements. Read below to learn
-how you can take part in improving the product.
-
-## Code of Conduct
-Please read our [Code of conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md)
-since we expect project participants to adhere to it. 
-
-## Contributing Guide
-Read our [contributing guide](.github/CONTRIBUTING.md) to learn about our
-development process, how to propose bugfixes and improvements, and how to build
-and test your changes.
-
-# Community
-
-Join our community and stay connected with the latest updates and discussions:
-
-- [Join our Discord community chat](https://discord.gg/ZQR6cyZC) to engage with
-  other users, ask questions, and participate in discussions.
-
-- [Visit hiro.so](https://www.hiro.so/) for updates and subcribing to the
-  mailing list.
-
-- Follow [Hiro on Twitter.](https://twitter.com/hirosystems)
+Apache-2.0. See [LICENSE](LICENSE).
