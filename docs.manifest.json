@@ -4,7 +4,7 @@
   "name": "Bitcoin indexer",
   "classification": "implementation",
   "repository": "bitcoinuniverseio/bitcoin-indexer",
-  "documentationUrl": "https://docs.bitcoinuniverse.io/infrastructure/bitcoin-indexer/",
+  "documentationUrl": "https://docs.bitcoinuniverse.io/developers/interfaces/",
   "docsRoot": ".",
   "sourceRef": "develop",
   "lifecycle": "experimental",
