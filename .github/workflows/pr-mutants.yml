@@ -21,9 +21,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  route:
+    uses: bitcoinuniverseio/.github-private/.github/workflows/route.yml@develop
+    secrets: inherit
+    with:
+      plan: '{"mutants":"docker"}'
+
   mutants:
+    needs: route
     name: Mutation Testing
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).mutants }}
     defaults:
       run:
         working-directory: ./
