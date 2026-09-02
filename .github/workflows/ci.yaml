@@ -20,12 +20,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  route:
+    uses: bitcoinuniverseio/.github-private/.github/workflows/route.yml@develop
+    secrets: inherit
+    with:
+      plan: '{"api_lint":"light","api_test":"docker","rustfmt":"light","clippy":"light","test":"docker","semantic_release":"light","build_publish":"release-local","api_build_publish":"release-local"}'
+
   api-lint:
+    needs: route
     strategy:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: runs-on=${{ github.run_id }}-api_lint/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).api_lint }}
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
@@ -65,6 +72,7 @@ jobs:
         run: npm run lint:unused-exports
 
   api-test:
+    needs: route
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +80,7 @@ jobs:
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
-    runs-on: runs-on=${{ github.run_id }}-api_test/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).api_test }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,8 +132,9 @@ jobs:
         if: always()
 
   rustfmt:
+    needs: route
     name: rust-fmt
-    runs-on: runs-on=${{ github.run_id }}-rustfmt/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).rustfmt }}
     strategy:
       fail-fast: false
       matrix:
@@ -183,8 +192,9 @@ jobs:
           exit "${CARGO_STATUS}"
 
   clippy:
+    needs: route
     name: rust-clippy
-    runs-on: runs-on=${{ github.run_id }}-clippy/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).clippy }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -231,6 +241,7 @@ jobs:
           exit $CLIPPY_EXIT_CODE
 
   test:
+    needs: route
     strategy:
       fail-fast: false
       matrix:
@@ -240,7 +251,7 @@ jobs:
           - cli
           - ordinals
           - runes
-    runs-on: runs-on=${{ github.run_id }}-test/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).test }}
     defaults:
       run:
         working-directory: ./components/${{ matrix.suite }}
@@ -302,8 +313,8 @@ jobs:
     # The Universe fork integrates and deploys its pinned production binary
     # through its own release gate; it has no Hiro release-bot credentials.
     if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: runs-on=${{ github.run_id }}-semantic_release/runner=universe-hosted/cpu=2+8/env=production
-    needs: [api-lint, api-test, test, rustfmt, clippy]
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).semantic_release }}
+    needs: [route, api-lint, api-test, test, rustfmt, clippy]
     permissions:
       contents: write
       issues: write
@@ -350,8 +361,8 @@ jobs:
             conventional-changelog-conventionalcommits@6.1.0
 
   build-publish:
-    runs-on: runs-on=${{ github.run_id }}-build_publish/runner=universe-hosted/cpu=2+8/env=production
-    needs: semantic-release
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).build_publish }}
+    needs: [route, semantic-release]
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
     steps:
@@ -406,8 +417,8 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: runs-on=${{ github.run_id }}-api_build_publish/runner=universe-hosted/cpu=2+8/env=production
-    needs: semantic-release
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).api_build_publish }}
+    needs: [route, semantic-release]
     steps:
       - uses: actions/checkout@v4
         with:
