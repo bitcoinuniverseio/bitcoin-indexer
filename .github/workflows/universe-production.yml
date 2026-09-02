@@ -12,8 +12,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  route:
+    uses: bitcoinuniverseio/.github-private/.github/workflows/route.yml@develop
+    secrets: inherit
+    with:
+      plan: '{"ordinals_production":"light"}'
+
   ordinals-production:
-    runs-on: runs-on=${{ github.run_id }}-ordinals_production/runner=universe-hosted/cpu=2+8/env=production
+    needs: route
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).ordinals_production }}
     timeout-minutes: 60
     env:
       ORDHOOK_TEST_PG_DATABASE: postgres
