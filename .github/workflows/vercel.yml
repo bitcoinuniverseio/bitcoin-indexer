@@ -21,11 +21,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  route:
+    uses: bitcoinuniverseio/.github-private/.github/workflows/route.yml@develop
+    secrets: inherit
+    with:
+      plan: '{"openapi_publish":"light"}'
+
   openapi-publish:
+    needs: route
     # The Universe fork ships the Windows indexer binary and intentionally has
     # no Hiro Vercel project or deployment credentials.
     if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: runs-on=${{ github.run_id }}-openapi_publish/runner=universe-hosted/cpu=2+8/env=production
+    runs-on: ${{ fromJSON(needs.route.outputs.targets).openapi_publish }}
 
     steps:
       - uses: actions/checkout@v2
