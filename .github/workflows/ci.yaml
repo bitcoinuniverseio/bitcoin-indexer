@@ -21,10 +21,11 @@ concurrency:
 
 jobs:
   route:
-    uses: bitcoinuniverseio/.github-private/.github/workflows/route.yml@develop
+    uses: ./.github/workflows/route.yml
     secrets: inherit
     with:
       plan: '{"api_lint":"light","api_test":"docker","rustfmt":"light","clippy":"light","test":"docker","semantic_release":"light","build_publish":"release-local","api_build_publish":"release-local"}'
+      config_ref: 1dd19289af21f4f6be01f874390a180b3af8bb38
 
   api-lint:
     needs: route
