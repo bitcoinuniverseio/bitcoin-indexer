@@ -23,7 +23,7 @@ concurrency:
 jobs:
   mutants:
     name: Mutation Testing
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-medium]
+    runs-on: [self-hosted, linux, x64, universe-super]
     defaults:
       run:
         working-directory: ./
