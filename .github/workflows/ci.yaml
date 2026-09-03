@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
@@ -72,7 +72,7 @@ jobs:
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,7 +125,7 @@ jobs:
 
   rustfmt:
     name: rust-fmt
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     strategy:
       fail-fast: false
       matrix:
@@ -184,7 +184,7 @@ jobs:
 
   clippy:
     name: rust-clippy
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -240,7 +240,7 @@ jobs:
           - cli
           - ordinals
           - runes
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     defaults:
       run:
         working-directory: ./components/${{ matrix.suite }}
@@ -302,7 +302,7 @@ jobs:
     # The Universe fork integrates and deploys its pinned production binary
     # through its own release gate; it has no Hiro release-bot credentials.
     if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     needs: [api-lint, api-test, test, rustfmt, clippy]
     permissions:
       contents: write
@@ -350,7 +350,7 @@ jobs:
             conventional-changelog-conventionalcommits@6.1.0
 
   build-publish:
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     needs: [semantic-release]
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
@@ -406,7 +406,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, linux, x64, universe-linux]
+    runs-on: [self-hosted, linux, x64, universe-super]
     needs: [semantic-release]
     steps:
       - uses: actions/checkout@v4
