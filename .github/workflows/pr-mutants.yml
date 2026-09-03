@@ -21,17 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  route:
-    uses: ./.github/workflows/route.yml
-    secrets: inherit
-    with:
-      plan: '{"mutants":"docker"}'
-      config_ref: 1dd19289af21f4f6be01f874390a180b3af8bb38
-
   mutants:
-    needs: route
     name: Mutation Testing
-    runs-on: ${{ fromJSON(needs.route.outputs.targets).mutants }}
+    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-medium]
     defaults:
       run:
         working-directory: ./

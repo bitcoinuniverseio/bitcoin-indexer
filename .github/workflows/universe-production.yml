@@ -12,16 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  route:
-    uses: ./.github/workflows/route.yml
-    secrets: inherit
-    with:
-      plan: '{"ordinals_production":"light"}'
-      config_ref: 1dd19289af21f4f6be01f874390a180b3af8bb38
-
   ordinals-production:
-    needs: route
-    runs-on: ${{ fromJSON(needs.route.outputs.targets).ordinals_production }}
+    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
     timeout-minutes: 60
     env:
       ORDHOOK_TEST_PG_DATABASE: postgres
