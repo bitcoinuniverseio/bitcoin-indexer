@@ -24,8 +24,11 @@ jobs:
   openapi-publish:
     # The Universe fork ships the Windows indexer binary and intentionally has
     # no Hiro Vercel project or deployment credentials.
-    if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
+    if: >-
+      github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, universe-ci]
 
     steps:
       - uses: actions/checkout@v2

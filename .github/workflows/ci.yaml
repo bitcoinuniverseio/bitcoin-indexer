@@ -21,11 +21,14 @@ concurrency:
 
 jobs:
   api-lint:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
+    runs-on: [self-hosted, universe-ci]
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
@@ -65,6 +68,9 @@ jobs:
         run: npm run lint:unused-exports
 
   api-test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +78,7 @@ jobs:
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-medium]
+    runs-on: [self-hosted, universe-ci]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,8 +130,11 @@ jobs:
         if: always()
 
   rustfmt:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     name: rust-fmt
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
+    runs-on: [self-hosted, universe-ci]
     strategy:
       fail-fast: false
       matrix:
@@ -183,8 +192,11 @@ jobs:
           exit "${CARGO_STATUS}"
 
   clippy:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     name: rust-clippy
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
+    runs-on: [self-hosted, universe-ci]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -231,6 +243,9 @@ jobs:
           exit $CLIPPY_EXIT_CODE
 
   test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -240,7 +255,7 @@ jobs:
           - cli
           - ordinals
           - runes
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-medium]
+    runs-on: [self-hosted, universe-ci]
     defaults:
       run:
         working-directory: ./components/${{ matrix.suite }}
@@ -301,8 +316,11 @@ jobs:
   semantic-release:
     # The Universe fork integrates and deploys its pinned production binary
     # through its own release gate; it has no Hiro release-bot credentials.
-    if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-small]
+    if: >-
+      github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, universe-ci]
     needs: [api-lint, api-test, test, rustfmt, clippy]
     permissions:
       contents: write
@@ -350,8 +368,11 @@ jobs:
             conventional-changelog-conventionalcommits@6.1.0
 
   build-publish:
-    runs-on: [self-hosted, universe-ci, linux-container-builder]
-    needs: [semantic-release]
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, universe-ci]
+    needs: semantic-release
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
     steps:
@@ -402,12 +423,15 @@ jobs:
           push: ${{ (github.ref != 'refs/heads/main' || needs.semantic-release.outputs.new_release_published == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
   api-build-publish:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, universe-ci, linux-container-builder]
-    needs: [semantic-release]
+    runs-on: [self-hosted, universe-ci]
+    needs: semantic-release
     steps:
       - uses: actions/checkout@v4
         with:
