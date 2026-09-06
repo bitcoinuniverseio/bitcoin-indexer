@@ -22,8 +22,11 @@ concurrency:
 
 jobs:
   mutants:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     name: Mutation Testing
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-medium]
+    runs-on: [self-hosted, universe-ci]
     defaults:
       run:
         working-directory: ./
