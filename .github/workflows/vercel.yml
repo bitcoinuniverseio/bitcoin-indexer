@@ -25,7 +25,7 @@ jobs:
     # The Universe fork ships the Windows indexer binary and intentionally has
     # no Hiro Vercel project or deployment credentials.
     if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
-    runs-on: [self-hosted, linux, x64, universe, gcp, universe-gcp-release]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
 
     steps:
       - uses: actions/checkout@v2
