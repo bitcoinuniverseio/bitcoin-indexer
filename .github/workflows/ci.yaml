@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
@@ -78,7 +78,7 @@ jobs:
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,7 +134,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     name: rust-fmt
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -196,7 +196,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     name: rust-clippy
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -255,7 +255,7 @@ jobs:
           - cli
           - ordinals
           - runes
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     defaults:
       run:
         working-directory: ./components/${{ matrix.suite }}
@@ -320,7 +320,7 @@ jobs:
       github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
       (github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     needs: [api-lint, api-test, test, rustfmt, clippy]
     permissions:
       contents: write
@@ -371,7 +371,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     needs: semantic-release
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
@@ -430,7 +430,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, universe-ci]
+    runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     needs: semantic-release
     steps:
       - uses: actions/checkout@v4
