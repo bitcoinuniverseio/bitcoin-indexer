@@ -319,6 +319,13 @@ pub async fn pg_roll_back_block(block_height: u64, db_tx: &mut Transaction<'_>, 
 }
 
 pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T) -> u32 {
+    pg_get_next_rune_number(client).await.saturating_sub(1)
+}
+
+/// Number the next etched rune receives: one above the highest stored number,
+/// or 0 on a chain whose index holds no rune yet (no genesis rune off mainnet,
+/// matching ord, whose rune numbers start at 0 there).
+pub async fn pg_get_next_rune_number<T: GenericClient>(client: &T) -> u32 {
     let row = client
         .query_opt("SELECT MAX(number) AS max FROM runes", &[])
         .await
@@ -326,8 +333,26 @@ pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T) -> u32 {
     let Some(row) = row else {
         return 0;
     };
-    let max: PgBigIntU32 = row.get("max");
-    max.0
+    let max: Option<PgBigIntU32> = row.get("max");
+    max.map(|value| value.0 + 1).unwrap_or(0)
+}
+
+/// Mainnet's genesis rune UNCOMMON•GOODS (1:0, etched by protocol at 840,000) is
+/// seeded by migration V1. ord creates it only on mainnet, so another network's
+/// index removes the seeded row before indexing; the row is matched by its
+/// exact mainnet block hash and nothing else is touched.
+pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(client: &T, network: bitcoin::Network) {
+    if network == bitcoin::Network::Bitcoin {
+        return;
+    }
+    client
+        .execute(
+            "DELETE FROM runes WHERE id = '1:0' AND number = 0 AND block_height = 840000 \
+             AND block_hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'",
+            &[],
+        )
+        .await
+        .expect("error removing the mainnet genesis rune from a non-mainnet index");
 }
 
 pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {
