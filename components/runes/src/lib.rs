@@ -155,6 +155,7 @@ pub async fn start_runes_indexer(
     {
         let mut pg_client = pg_pool_client(&pool).await?;
         db::migrate(&mut pg_client, ctx).await;
+        db::pg_remove_mainnet_genesis_rune(&pg_client, config.bitcoind.network).await;
     }
 
     let prometheus = PrometheusMonitoring::new();

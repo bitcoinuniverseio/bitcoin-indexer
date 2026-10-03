@@ -25,7 +25,7 @@ use crate::db::{
         db_balance_change::DbBalanceChange, db_ledger_entry::DbLedgerEntry,
         db_ledger_operation::DbLedgerOperation, db_rune::DbRune, db_supply_change::DbSupplyChange,
     },
-    pg_get_max_rune_number, pg_get_rune_by_id, pg_get_rune_total_mints,
+    pg_get_next_rune_number, pg_get_rune_by_id, pg_get_rune_total_mints,
 };
 
 /// Holds rune data across multiple blocks for faster computations. Processes rune events as they happen during transactions and
@@ -63,7 +63,7 @@ impl IndexCache {
         let bitcoin_client = bitcoind_get_client(&config.bitcoind, ctx);
         IndexCache {
             network,
-            next_rune_number: pg_get_max_rune_number(&pg_client).await + 1,
+            next_rune_number: pg_get_next_rune_number(&pg_client).await,
             rune_cache: LruCache::new(cap),
             rune_total_mints_cache: LruCache::new(cap),
             output_cache: LruCache::new(cap),
@@ -95,7 +95,7 @@ impl IndexCache {
     }
 
     pub async fn reset_max_rune_number(&mut self, db_tx: &mut Transaction<'_>) {
-        self.next_rune_number = pg_get_max_rune_number(db_tx).await + 1;
+        self.next_rune_number = pg_get_next_rune_number(db_tx).await;
     }
 
     /// Creates a fresh transaction index cache.
