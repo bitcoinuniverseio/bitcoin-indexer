@@ -79,7 +79,7 @@ pub async fn pg_insert_runes(
                    (id, number, name, spaced_name, block_hash, block_height, tx_index, tx_id, divisibility, premine, symbol, \
                     terms_amount, terms_cap, terms_height_start, terms_height_end, terms_offset_start, terms_offset_end, turbo, cenotaph, timestamp) \
                  SELECT \
-                   $1, (SELECT COALESCE(MAX(number), 0) + 1 FROM runes), $2, $3, $4, $5, $6, $7, $8, $9, $10, \
+                   $1, (SELECT COALESCE(MAX(number) + 1, 0) FROM runes), $2, $3, $4, $5, $6, $7, $8, $9, $10, \
                    $11, $12, $13, $14, $15, $16, $17, $18, $19 \
                  WHERE NOT EXISTS (SELECT 1 FROM runes WHERE name = $2) \
                  ON CONFLICT (name) DO NOTHING",
