@@ -75,18 +75,27 @@ export class PgStore extends BasePgStore {
     super(sql);
   }
 
+  // The indexed tip (indexed_chain_tip, written with each indexed block) is the
+  // chain tip; the last ledger block is only a fallback for an index that has
+  // not recorded one, because it trails the tip whenever a block has no Rune activity.
   async getChainTipEtag(): Promise<string | undefined> {
     const result = await this.sql<{ etag: string }[]>`
-      SELECT block_hash AS etag FROM ledger ORDER BY block_height DESC LIMIT 1
+      SELECT COALESCE(
+        (SELECT block_hash FROM indexed_chain_tip WHERE id),
+        (SELECT block_hash FROM ledger ORDER BY block_height DESC LIMIT 1)
+      ) AS etag
     `;
-    return result[0]?.etag;
+    return result[0]?.etag ?? undefined;
   }
 
   async getChainTipBlockHeight(): Promise<string | undefined> {
     const result = await this.sql<{ block_height: string }[]>`
-      SELECT block_height FROM ledger ORDER BY block_height DESC LIMIT 1
+      SELECT COALESCE(
+        (SELECT block_height FROM indexed_chain_tip WHERE id),
+        (SELECT block_height FROM ledger ORDER BY block_height DESC LIMIT 1)
+      ) AS block_height
     `;
-    return result[0]?.block_height;
+    return result[0]?.block_height ?? undefined;
   }
 
   private async getEtchings(
@@ -97,7 +106,12 @@ export class PgStore extends BasePgStore {
     const results = await this.sql<DbCountedQueryResult<DbRuneWithChainTip>[]>`
       WITH
         rune_count AS (SELECT COALESCE(MAX(number) + 1, 0) AS total FROM runes),
-        max AS (SELECT MAX(block_height) AS chain_tip FROM ledger),
+        max AS (
+          SELECT COALESCE(
+            (SELECT block_height FROM indexed_chain_tip WHERE id),
+            (SELECT MAX(block_height) FROM ledger)
+          ) AS chain_tip
+        ),
         results AS (
           SELECT *
           FROM runes

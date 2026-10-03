@@ -355,6 +355,30 @@ pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(client: &T, networ
         .expect("error removing the mainnet genesis rune from a non-mainnet index");
 }
 
+/// Records `block_height`/`block_hash` (0x-prefixed or bare) as the last fully indexed block.
+pub async fn pg_set_indexed_chain_tip<T: GenericClient>(client: &mut T, block_height: u64, block_hash: &str) {
+    let hash = block_hash.trim_start_matches("0x").to_string();
+    client
+        .execute(
+            "INSERT INTO indexed_chain_tip (id, block_height, block_hash) VALUES (TRUE, $1::text::numeric, $2) \
+             ON CONFLICT (id) DO UPDATE SET block_height = EXCLUDED.block_height, block_hash = EXCLUDED.block_hash",
+            &[&block_height.to_string(), &hash],
+        )
+        .await
+        .expect("error recording the indexed chain tip");
+}
+
+/// A rolled-back block can no longer be the indexed tip; the next indexed block records a new one.
+pub async fn pg_unset_indexed_chain_tip_from<T: GenericClient>(client: &mut T, block_height: u64) {
+    client
+        .execute(
+            "DELETE FROM indexed_chain_tip WHERE block_height >= $1::text::numeric",
+            &[&block_height.to_string()],
+        )
+        .await
+        .expect("error clearing the indexed chain tip");
+}
+
 pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {
     let row = client
         .query_opt("SELECT MAX(block_height) AS max FROM ledger", &[])
