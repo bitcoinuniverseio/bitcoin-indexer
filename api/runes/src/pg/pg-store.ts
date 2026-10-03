@@ -241,7 +241,7 @@ export class PgStore extends BasePgStore {
   ): Promise<DbPaginatedResult<DbItemWithRune<DbBalance>>> {
     const results = await this.sql<DbCountedQueryResult<DbItemWithRune<DbBalance>>[]>`
       WITH grouped AS (
-        SELECT DISTINCT ON (b.address) b.address, b.balance, b.total_operations, b.rune_id, r.name, r.number
+        SELECT DISTINCT ON (b.address) b.address, b.balance, b.total_operations, b.rune_id, r.name, r.number,
           r.spaced_name, r.divisibility, COUNT(*) OVER() AS total
         FROM balance_changes AS b
         INNER JOIN runes AS r ON r.id = b.rune_id
