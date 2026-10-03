@@ -96,7 +96,7 @@ export class PgStore extends BasePgStore {
   ): Promise<DbPaginatedResult<DbRuneWithChainTip>> {
     const results = await this.sql<DbCountedQueryResult<DbRuneWithChainTip>[]>`
       WITH
-        rune_count AS (SELECT COALESCE(MAX(number), 0) + 1 AS total FROM runes),
+        rune_count AS (SELECT COALESCE(MAX(number) + 1, 0) AS total FROM runes),
         max AS (SELECT MAX(block_height) AS chain_tip FROM ledger),
         results AS (
           SELECT *
