@@ -220,6 +220,7 @@ pub async fn index_block(
     // Measure database write time
     let rune_db_write_start = std::time::Instant::now();
     index_cache.db_cache.flush(&mut db_tx, ctx).await;
+    super::pg_set_indexed_chain_tip(&mut db_tx, block_height, block_hash).await;
     db_tx
         .commit()
         .await
@@ -260,6 +261,7 @@ pub async fn roll_back_block(pg_client: &mut Client, block_height: u64, ctx: &Co
         .await
         .expect("Unable to begin block roll back pg transaction");
     pg_roll_back_block(block_height, &mut db_tx, ctx).await;
+    super::pg_unset_indexed_chain_tip_from(&mut db_tx, block_height).await;
     db_tx
         .commit()
         .await
