@@ -24,7 +24,10 @@ jobs:
   openapi-publish:
     # The Universe fork ships the Windows indexer binary and intentionally has
     # no Hiro Vercel project or deployment credentials.
-    if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
+    if: >-
+      github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
 
     steps:
@@ -35,7 +38,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '20'
+          node-version: '24.19.0'
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest

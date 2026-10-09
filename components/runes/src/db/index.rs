@@ -21,12 +21,18 @@ use crate::{
     db::cache::transaction_location::TransactionLocation, utils::monitoring::PrometheusMonitoring,
 };
 
+/// First block indexed for Runes on `network`.
+///
+/// Mainnet and testnet follow ord's `Rune::first_rune_height` (4 and 12 halving
+/// intervals). On Signet and Regtest that height is 0, but block 0 is the fixed
+/// genesis block whose only transaction is the coinbase without a runestone,
+/// so indexing starts at block 1 and the default tip below it (block 0) needs
+/// no unsigned underflow.
 pub fn get_rune_genesis_block_height(network: Network) -> u64 {
     match network {
         Network::Bitcoin => 840_000,
-        Network::Testnet => todo!(),
-        Network::Signet => todo!(),
-        Network::Regtest => todo!(),
+        Network::Testnet => 2_520_000,
+        Network::Signet | Network::Regtest => 1,
         _ => todo!(),
     }
 }
@@ -214,6 +220,7 @@ pub async fn index_block(
     // Measure database write time
     let rune_db_write_start = std::time::Instant::now();
     index_cache.db_cache.flush(&mut db_tx, ctx).await;
+    super::pg_set_indexed_chain_tip(&mut db_tx, block_height, block_hash).await;
     db_tx
         .commit()
         .await
@@ -254,6 +261,7 @@ pub async fn roll_back_block(pg_client: &mut Client, block_height: u64, ctx: &Co
         .await
         .expect("Unable to begin block roll back pg transaction");
     pg_roll_back_block(block_height, &mut db_tx, ctx).await;
+    super::pg_unset_indexed_chain_tip_from(&mut db_tx, block_height).await;
     db_tx
         .commit()
         .await

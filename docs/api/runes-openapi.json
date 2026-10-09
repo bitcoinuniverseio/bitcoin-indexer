@@ -1,0 +1,2526 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bitcoin Indexer Runes API",
+    "description": "Read-only REST API over the Runes index produced by this repository.\n\nEvery operation is a GET. The API holds no keys, signs nothing, and never writes to the\nindex; it only reads the Postgres database the Rust indexer fills.\n\nThe server mounts the same routes under two prefixes: `/runes/v1` (documented here) and\n`/runes`. Prefer the versioned prefix.\n\nThis document is generated from the route schemas in `api/runes/src`. Regenerate it with\n`node scripts/generate-openapi-contracts.mjs`.",
+    "version": "v1",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    }
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/runes/v1/": {
+      "get": {
+        "operationId": "getApiStatus",
+        "summary": "API Status",
+        "tags": [
+          "Status"
+        ],
+        "description": "Displays the status of the API",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Api Status Response",
+                  "type": "object",
+                  "properties": {
+                    "server_version": {
+                      "type": "string",
+                      "example": ""
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "block_height": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "server_version",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings": {
+      "get": {
+        "operationId": "getEtchings",
+        "summary": "Rune etchings",
+        "tags": [
+          "Etchings"
+        ],
+        "description": "Retrieves a paginated list of rune etchings",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated etchings response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "title": "ID",
+                            "description": "Rune ID",
+                            "type": "string",
+                            "example": "840000:1"
+                          },
+                          "name": {
+                            "title": "Name",
+                            "description": "Rune name",
+                            "type": "string",
+                            "example": "ZZZZZFEHUZZZZZ"
+                          },
+                          "spaced_name": {
+                            "title": "Spaced name",
+                            "description": "Rune name with spacers",
+                            "type": "string",
+                            "example": "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                          },
+                          "number": {
+                            "title": "Number",
+                            "description": "Rune number",
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "divisibility": {
+                            "title": "Divisibility",
+                            "description": "Rune decimal places",
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "symbol": {
+                            "title": "Symbol",
+                            "description": "Rune symbol",
+                            "type": "string",
+                            "example": "ᚠ"
+                          },
+                          "turbo": {
+                            "title": "Turbo",
+                            "description": "Rune upgradeability",
+                            "type": "boolean",
+                            "example": false
+                          },
+                          "mint_terms": {
+                            "title": "Mint terms",
+                            "description": "Rune mint terms",
+                            "type": "object",
+                            "properties": {
+                              "amount": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      "100"
+                                    ],
+                                    "title": "Mint amount",
+                                    "description": "Amount awarded per mint",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "cap": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      "1111111"
+                                    ],
+                                    "title": "Mint cap",
+                                    "description": "Maximum number of mints allowed",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "height_start": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      840000
+                                    ],
+                                    "title": "Mint block height start",
+                                    "description": "Block height at which the mint period opens",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "height_end": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      1050000
+                                    ],
+                                    "title": "Mint block height end",
+                                    "description": "Block height at which the mint period closes",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "offset_start": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      0
+                                    ],
+                                    "title": "Mint block height offset start",
+                                    "description": "Block height etching offset at which the mint period opens",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "offset_end": {
+                                "anyOf": [
+                                  {
+                                    "examples": [
+                                      200
+                                    ],
+                                    "title": "Mint block height offset end",
+                                    "description": "Block height etching offset at which the mint period closes",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "amount",
+                              "cap",
+                              "height_start",
+                              "height_end",
+                              "offset_start",
+                              "offset_end"
+                            ]
+                          },
+                          "supply": {
+                            "title": "Supply information",
+                            "description": "Rune supply information",
+                            "type": "object",
+                            "properties": {
+                              "current": {
+                                "title": "Current supply",
+                                "description": "Circulating supply including mints, burns and premine",
+                                "type": "string",
+                                "example": "11274916350"
+                              },
+                              "minted": {
+                                "title": "Minted amount",
+                                "description": "Total minted amount",
+                                "type": "string",
+                                "example": "274916100"
+                              },
+                              "total_mints": {
+                                "title": "Total mints",
+                                "description": "Number of mints for this rune",
+                                "type": "string",
+                                "example": "250"
+                              },
+                              "mint_percentage": {
+                                "title": "Mint percentage",
+                                "description": "Percentage of mints that have been claimed",
+                                "type": "string",
+                                "example": "59.4567"
+                              },
+                              "mintable": {
+                                "title": "Mintable",
+                                "description": "Whether or not this rune is mintable at this time",
+                                "type": "boolean"
+                              },
+                              "burned": {
+                                "title": "Burned amount",
+                                "description": "Total burned amount",
+                                "type": "string",
+                                "example": "5100"
+                              },
+                              "total_burns": {
+                                "title": "Total burns",
+                                "description": "Number of burns for this rune",
+                                "type": "string",
+                                "example": "17"
+                              },
+                              "premine": {
+                                "title": "Premine amount",
+                                "description": "Amount premined for this rune",
+                                "type": "string",
+                                "example": "11000000000"
+                              }
+                            },
+                            "required": [
+                              "current",
+                              "minted",
+                              "total_mints",
+                              "mint_percentage",
+                              "mintable",
+                              "burned",
+                              "total_burns",
+                              "premine"
+                            ]
+                          },
+                          "location": {
+                            "title": "Transaction location",
+                            "description": "Location of the transaction which confirmed this operation",
+                            "type": "object",
+                            "properties": {
+                              "block_hash": {
+                                "title": "Block hash",
+                                "description": "Bitcoin block hash",
+                                "type": "string",
+                                "example": "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                              },
+                              "block_height": {
+                                "title": "Block height",
+                                "description": "Bitcoin block height",
+                                "type": "integer",
+                                "example": 840000
+                              },
+                              "tx_id": {
+                                "title": "Transaction ID",
+                                "description": "Bitcoin transaction ID",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                              },
+                              "tx_index": {
+                                "title": "Transaction Index",
+                                "description": "Index of this transaction in its Bitcoin block",
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "vout": {
+                                "title": "Output number",
+                                "description": "Bitcoin transaction output number",
+                                "type": "integer",
+                                "example": 100
+                              },
+                              "output": {
+                                "title": "Transaction output",
+                                "description": "Bitcoin transaction output",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                              },
+                              "timestamp": {
+                                "title": "Timestamp",
+                                "description": "Bitcoin transaction timestamp",
+                                "type": "integer",
+                                "example": 1713571767
+                              }
+                            },
+                            "required": [
+                              "block_hash",
+                              "block_height",
+                              "tx_id",
+                              "tx_index",
+                              "timestamp"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "spaced_name",
+                          "number",
+                          "divisibility",
+                          "symbol",
+                          "turbo",
+                          "mint_terms",
+                          "supply",
+                          "location"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings/{etching}": {
+      "get": {
+        "operationId": "getEtching",
+        "summary": "Rune etching",
+        "tags": [
+          "Etchings"
+        ],
+        "description": "Retrieves information for a Rune etching",
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Rune ID",
+                  "type": "string",
+                  "pattern": "^[0-9]+:[0-9]+$"
+                },
+                {
+                  "title": "Rune number",
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Rune name",
+                  "type": "string",
+                  "pattern": "^[A-Z]+$"
+                },
+                {
+                  "title": "Rune name with spacers",
+                  "type": "string",
+                  "pattern": "^[A-Za-z]+(•[A-Za-z]+)+$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "etching",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "title": "ID",
+                      "description": "Rune ID",
+                      "type": "string",
+                      "example": "840000:1"
+                    },
+                    "name": {
+                      "title": "Name",
+                      "description": "Rune name",
+                      "type": "string",
+                      "example": "ZZZZZFEHUZZZZZ"
+                    },
+                    "spaced_name": {
+                      "title": "Spaced name",
+                      "description": "Rune name with spacers",
+                      "type": "string",
+                      "example": "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                    },
+                    "number": {
+                      "title": "Number",
+                      "description": "Rune number",
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "divisibility": {
+                      "title": "Divisibility",
+                      "description": "Rune decimal places",
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "symbol": {
+                      "title": "Symbol",
+                      "description": "Rune symbol",
+                      "type": "string",
+                      "example": "ᚠ"
+                    },
+                    "turbo": {
+                      "title": "Turbo",
+                      "description": "Rune upgradeability",
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "mint_terms": {
+                      "title": "Mint terms",
+                      "description": "Rune mint terms",
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                "100"
+                              ],
+                              "title": "Mint amount",
+                              "description": "Amount awarded per mint",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "cap": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                "1111111"
+                              ],
+                              "title": "Mint cap",
+                              "description": "Maximum number of mints allowed",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "height_start": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                840000
+                              ],
+                              "title": "Mint block height start",
+                              "description": "Block height at which the mint period opens",
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "height_end": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                1050000
+                              ],
+                              "title": "Mint block height end",
+                              "description": "Block height at which the mint period closes",
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "offset_start": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                0
+                              ],
+                              "title": "Mint block height offset start",
+                              "description": "Block height etching offset at which the mint period opens",
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "offset_end": {
+                          "anyOf": [
+                            {
+                              "examples": [
+                                200
+                              ],
+                              "title": "Mint block height offset end",
+                              "description": "Block height etching offset at which the mint period closes",
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "cap",
+                        "height_start",
+                        "height_end",
+                        "offset_start",
+                        "offset_end"
+                      ]
+                    },
+                    "supply": {
+                      "title": "Supply information",
+                      "description": "Rune supply information",
+                      "type": "object",
+                      "properties": {
+                        "current": {
+                          "title": "Current supply",
+                          "description": "Circulating supply including mints, burns and premine",
+                          "type": "string",
+                          "example": "11274916350"
+                        },
+                        "minted": {
+                          "title": "Minted amount",
+                          "description": "Total minted amount",
+                          "type": "string",
+                          "example": "274916100"
+                        },
+                        "total_mints": {
+                          "title": "Total mints",
+                          "description": "Number of mints for this rune",
+                          "type": "string",
+                          "example": "250"
+                        },
+                        "mint_percentage": {
+                          "title": "Mint percentage",
+                          "description": "Percentage of mints that have been claimed",
+                          "type": "string",
+                          "example": "59.4567"
+                        },
+                        "mintable": {
+                          "title": "Mintable",
+                          "description": "Whether or not this rune is mintable at this time",
+                          "type": "boolean"
+                        },
+                        "burned": {
+                          "title": "Burned amount",
+                          "description": "Total burned amount",
+                          "type": "string",
+                          "example": "5100"
+                        },
+                        "total_burns": {
+                          "title": "Total burns",
+                          "description": "Number of burns for this rune",
+                          "type": "string",
+                          "example": "17"
+                        },
+                        "premine": {
+                          "title": "Premine amount",
+                          "description": "Amount premined for this rune",
+                          "type": "string",
+                          "example": "11000000000"
+                        }
+                      },
+                      "required": [
+                        "current",
+                        "minted",
+                        "total_mints",
+                        "mint_percentage",
+                        "mintable",
+                        "burned",
+                        "total_burns",
+                        "premine"
+                      ]
+                    },
+                    "location": {
+                      "title": "Transaction location",
+                      "description": "Location of the transaction which confirmed this operation",
+                      "type": "object",
+                      "properties": {
+                        "block_hash": {
+                          "title": "Block hash",
+                          "description": "Bitcoin block hash",
+                          "type": "string",
+                          "example": "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                        },
+                        "block_height": {
+                          "title": "Block height",
+                          "description": "Bitcoin block height",
+                          "type": "integer",
+                          "example": 840000
+                        },
+                        "tx_id": {
+                          "title": "Transaction ID",
+                          "description": "Bitcoin transaction ID",
+                          "type": "string",
+                          "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                        },
+                        "tx_index": {
+                          "title": "Transaction Index",
+                          "description": "Index of this transaction in its Bitcoin block",
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "vout": {
+                          "title": "Output number",
+                          "description": "Bitcoin transaction output number",
+                          "type": "integer",
+                          "example": 100
+                        },
+                        "output": {
+                          "title": "Transaction output",
+                          "description": "Bitcoin transaction output",
+                          "type": "string",
+                          "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                        },
+                        "timestamp": {
+                          "title": "Timestamp",
+                          "description": "Bitcoin transaction timestamp",
+                          "type": "integer",
+                          "example": 1713571767
+                        }
+                      },
+                      "required": [
+                        "block_hash",
+                        "block_height",
+                        "tx_id",
+                        "tx_index",
+                        "timestamp"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "spaced_name",
+                    "number",
+                    "divisibility",
+                    "symbol",
+                    "turbo",
+                    "mint_terms",
+                    "supply",
+                    "location"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Not Found Response",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "Not found"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings/{etching}/activity": {
+      "get": {
+        "operationId": "getRuneActivity",
+        "summary": "Rune activity",
+        "tags": [
+          "Activity"
+        ],
+        "description": "Retrieves all activity for a Rune",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Rune ID",
+                  "type": "string",
+                  "pattern": "^[0-9]+:[0-9]+$"
+                },
+                {
+                  "title": "Rune number",
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Rune name",
+                  "type": "string",
+                  "pattern": "^[A-Z]+$"
+                },
+                {
+                  "title": "Rune name with spacers",
+                  "type": "string",
+                  "pattern": "^[A-Za-z]+(•[A-Za-z]+)+$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "etching",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated activity response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "title": "Address",
+                            "description": "Bitcoin address which initiated this activity",
+                            "type": "string",
+                            "example": "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                          },
+                          "receiver_address": {
+                            "title": "Receiver address",
+                            "description": "Bitcoin address which is receiving rune balance",
+                            "type": "string",
+                            "example": "bc1pgdrveee2v4ez95szaakw5gkd8eennv2dddf9rjdrlt6ch56lzrrsxgvazt"
+                          },
+                          "amount": {
+                            "title": "Amount",
+                            "description": "Rune amount relevat to this activity",
+                            "type": "string",
+                            "example": "11000000000"
+                          },
+                          "operation": {
+                            "title": "Operation",
+                            "description": "Type of operation described in this activity",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "etching"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "mint"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "burn"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "send"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "receive"
+                                ]
+                              }
+                            ]
+                          },
+                          "location": {
+                            "title": "Transaction location",
+                            "description": "Location of the transaction which confirmed this operation",
+                            "type": "object",
+                            "properties": {
+                              "block_hash": {
+                                "title": "Block hash",
+                                "description": "Bitcoin block hash",
+                                "type": "string",
+                                "example": "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                              },
+                              "block_height": {
+                                "title": "Block height",
+                                "description": "Bitcoin block height",
+                                "type": "integer",
+                                "example": 840000
+                              },
+                              "tx_id": {
+                                "title": "Transaction ID",
+                                "description": "Bitcoin transaction ID",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                              },
+                              "tx_index": {
+                                "title": "Transaction Index",
+                                "description": "Index of this transaction in its Bitcoin block",
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "vout": {
+                                "title": "Output number",
+                                "description": "Bitcoin transaction output number",
+                                "type": "integer",
+                                "example": 100
+                              },
+                              "output": {
+                                "title": "Transaction output",
+                                "description": "Bitcoin transaction output",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                              },
+                              "timestamp": {
+                                "title": "Timestamp",
+                                "description": "Bitcoin transaction timestamp",
+                                "type": "integer",
+                                "example": 1713571767
+                              }
+                            },
+                            "required": [
+                              "block_hash",
+                              "block_height",
+                              "tx_id",
+                              "tx_index",
+                              "timestamp"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "operation",
+                          "location"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings/{etching}/activity/{address}": {
+      "get": {
+        "operationId": "getRuneAddressActivity",
+        "summary": "Rune activity for address",
+        "tags": [
+          "Activity"
+        ],
+        "description": "Retrieves all activity for a Rune address",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Rune ID",
+                  "type": "string",
+                  "pattern": "^[0-9]+:[0-9]+$"
+                },
+                {
+                  "title": "Rune number",
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Rune name",
+                  "type": "string",
+                  "pattern": "^[A-Z]+$"
+                },
+                {
+                  "title": "Rune name with spacers",
+                  "type": "string",
+                  "pattern": "^[A-Za-z]+(•[A-Za-z]+)+$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "etching",
+            "required": true
+          },
+          {
+            "schema": {
+              "title": "Address",
+              "type": "string"
+            },
+            "example": "bc1p8aq8s3z9xl87e74twfk93mljxq6alv4a79yheadx33t9np4g2wkqqt8kc5",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "description": "Bitcoin address"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated activity response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "title": "Address",
+                            "description": "Bitcoin address which initiated this activity",
+                            "type": "string",
+                            "example": "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                          },
+                          "receiver_address": {
+                            "title": "Receiver address",
+                            "description": "Bitcoin address which is receiving rune balance",
+                            "type": "string",
+                            "example": "bc1pgdrveee2v4ez95szaakw5gkd8eennv2dddf9rjdrlt6ch56lzrrsxgvazt"
+                          },
+                          "amount": {
+                            "title": "Amount",
+                            "description": "Rune amount relevat to this activity",
+                            "type": "string",
+                            "example": "11000000000"
+                          },
+                          "operation": {
+                            "title": "Operation",
+                            "description": "Type of operation described in this activity",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "etching"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "mint"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "burn"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "send"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "receive"
+                                ]
+                              }
+                            ]
+                          },
+                          "location": {
+                            "title": "Transaction location",
+                            "description": "Location of the transaction which confirmed this operation",
+                            "type": "object",
+                            "properties": {
+                              "block_hash": {
+                                "title": "Block hash",
+                                "description": "Bitcoin block hash",
+                                "type": "string",
+                                "example": "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                              },
+                              "block_height": {
+                                "title": "Block height",
+                                "description": "Bitcoin block height",
+                                "type": "integer",
+                                "example": 840000
+                              },
+                              "tx_id": {
+                                "title": "Transaction ID",
+                                "description": "Bitcoin transaction ID",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                              },
+                              "tx_index": {
+                                "title": "Transaction Index",
+                                "description": "Index of this transaction in its Bitcoin block",
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "vout": {
+                                "title": "Output number",
+                                "description": "Bitcoin transaction output number",
+                                "type": "integer",
+                                "example": 100
+                              },
+                              "output": {
+                                "title": "Transaction output",
+                                "description": "Bitcoin transaction output",
+                                "type": "string",
+                                "example": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                              },
+                              "timestamp": {
+                                "title": "Timestamp",
+                                "description": "Bitcoin transaction timestamp",
+                                "type": "integer",
+                                "example": 1713571767
+                              }
+                            },
+                            "required": [
+                              "block_hash",
+                              "block_height",
+                              "tx_id",
+                              "tx_index",
+                              "timestamp"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "operation",
+                          "location"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings/{etching}/holders": {
+      "get": {
+        "operationId": "getRuneHolders",
+        "summary": "Rune holders",
+        "tags": [
+          "Balances"
+        ],
+        "description": "Retrieves a paginated list of holders for a Rune",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Rune ID",
+                  "type": "string",
+                  "pattern": "^[0-9]+:[0-9]+$"
+                },
+                {
+                  "title": "Rune number",
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Rune name",
+                  "type": "string",
+                  "pattern": "^[A-Z]+$"
+                },
+                {
+                  "title": "Rune name with spacers",
+                  "type": "string",
+                  "pattern": "^[A-Za-z]+(•[A-Za-z]+)+$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "etching",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated holders response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "title": "Address",
+                            "description": "Bitcoin address which holds this balance",
+                            "type": "string",
+                            "example": "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                          },
+                          "balance": {
+                            "title": "Balance",
+                            "description": "Rune balance",
+                            "type": "string",
+                            "example": "11000000000"
+                          }
+                        },
+                        "required": [
+                          "balance"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/etchings/{etching}/holders/{address}": {
+      "get": {
+        "operationId": "getRuneHolderBalance",
+        "summary": "Rune holder balance",
+        "tags": [
+          "Balances"
+        ],
+        "description": "Retrieves holder balance for a specific Rune",
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Rune ID",
+                  "type": "string",
+                  "pattern": "^[0-9]+:[0-9]+$"
+                },
+                {
+                  "title": "Rune number",
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Rune name",
+                  "type": "string",
+                  "pattern": "^[A-Z]+$"
+                },
+                {
+                  "title": "Rune name with spacers",
+                  "type": "string",
+                  "pattern": "^[A-Za-z]+(•[A-Za-z]+)+$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "etching",
+            "required": true
+          },
+          {
+            "schema": {
+              "title": "Address",
+              "type": "string"
+            },
+            "example": "bc1p8aq8s3z9xl87e74twfk93mljxq6alv4a79yheadx33t9np4g2wkqqt8kc5",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "description": "Bitcoin address"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "title": "Address",
+                      "description": "Bitcoin address which holds this balance",
+                      "type": "string",
+                      "example": "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                    },
+                    "balance": {
+                      "title": "Balance",
+                      "description": "Rune balance",
+                      "type": "string",
+                      "example": "11000000000"
+                    }
+                  },
+                  "required": [
+                    "balance"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Not Found Response",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "Not found"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/addresses/{address}/balances": {
+      "get": {
+        "operationId": "getAddressBalances",
+        "summary": "Address balances",
+        "tags": [
+          "Balances"
+        ],
+        "description": "Retrieves a paginated list of address balances",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "title": "Address",
+              "type": "string"
+            },
+            "example": "bc1p8aq8s3z9xl87e74twfk93mljxq6alv4a79yheadx33t9np4g2wkqqt8kc5",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "description": "Bitcoin address"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated balances response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "rune": {
+                                "title": "Rune detail",
+                                "description": "Details of the rune affected by this activity",
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "title": "ID",
+                                    "description": "Rune ID",
+                                    "examples": [
+                                      "840000:1"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "title": "Number",
+                                    "description": "Rune number",
+                                    "examples": [
+                                      1
+                                    ],
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "title": "Name",
+                                    "description": "Rune name",
+                                    "examples": [
+                                      "ZZZZZFEHUZZZZZ"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "spaced_name": {
+                                    "title": "Spaced name",
+                                    "description": "Rune name with spacers",
+                                    "examples": [
+                                      "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "number",
+                                  "name",
+                                  "spaced_name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rune"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "address": {
+                                "examples": [
+                                  "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                                ],
+                                "title": "Address",
+                                "description": "Bitcoin address which holds this balance",
+                                "type": "string"
+                              },
+                              "balance": {
+                                "examples": [
+                                  "11000000000"
+                                ],
+                                "title": "Balance",
+                                "description": "Rune balance",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "balance"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/addresses/{address}/activity": {
+      "get": {
+        "operationId": "getAddressActivity",
+        "summary": "Address activity",
+        "tags": [
+          "Activity"
+        ],
+        "description": "Retrieves a paginated list of rune activity for an address",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "title": "Address",
+              "type": "string"
+            },
+            "example": "bc1p8aq8s3z9xl87e74twfk93mljxq6alv4a79yheadx33t9np4g2wkqqt8kc5",
+            "in": "path",
+            "name": "address",
+            "required": true,
+            "description": "Bitcoin address"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated activity response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "rune": {
+                                "title": "Rune detail",
+                                "description": "Details of the rune affected by this activity",
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "title": "ID",
+                                    "description": "Rune ID",
+                                    "examples": [
+                                      "840000:1"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "title": "Number",
+                                    "description": "Rune number",
+                                    "examples": [
+                                      1
+                                    ],
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "title": "Name",
+                                    "description": "Rune name",
+                                    "examples": [
+                                      "ZZZZZFEHUZZZZZ"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "spaced_name": {
+                                    "title": "Spaced name",
+                                    "description": "Rune name with spacers",
+                                    "examples": [
+                                      "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "number",
+                                  "name",
+                                  "spaced_name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rune"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "address": {
+                                "examples": [
+                                  "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                                ],
+                                "title": "Address",
+                                "description": "Bitcoin address which initiated this activity",
+                                "type": "string"
+                              },
+                              "receiver_address": {
+                                "examples": [
+                                  "bc1pgdrveee2v4ez95szaakw5gkd8eennv2dddf9rjdrlt6ch56lzrrsxgvazt"
+                                ],
+                                "title": "Receiver address",
+                                "description": "Bitcoin address which is receiving rune balance",
+                                "type": "string"
+                              },
+                              "amount": {
+                                "examples": [
+                                  "11000000000"
+                                ],
+                                "title": "Amount",
+                                "description": "Rune amount relevat to this activity",
+                                "type": "string"
+                              },
+                              "operation": {
+                                "title": "Operation",
+                                "description": "Type of operation described in this activity",
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "etching"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mint"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "burn"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "send"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "receive"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "location": {
+                                "title": "Transaction location",
+                                "description": "Location of the transaction which confirmed this operation",
+                                "type": "object",
+                                "properties": {
+                                  "block_hash": {
+                                    "examples": [
+                                      "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                                    ],
+                                    "title": "Block hash",
+                                    "description": "Bitcoin block hash",
+                                    "type": "string"
+                                  },
+                                  "block_height": {
+                                    "examples": [
+                                      840000
+                                    ],
+                                    "title": "Block height",
+                                    "description": "Bitcoin block height",
+                                    "type": "integer"
+                                  },
+                                  "tx_id": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                                    ],
+                                    "title": "Transaction ID",
+                                    "description": "Bitcoin transaction ID",
+                                    "type": "string"
+                                  },
+                                  "tx_index": {
+                                    "examples": [
+                                      1
+                                    ],
+                                    "title": "Transaction Index",
+                                    "description": "Index of this transaction in its Bitcoin block",
+                                    "type": "integer"
+                                  },
+                                  "vout": {
+                                    "examples": [
+                                      100
+                                    ],
+                                    "title": "Output number",
+                                    "description": "Bitcoin transaction output number",
+                                    "type": "integer"
+                                  },
+                                  "output": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                                    ],
+                                    "title": "Transaction output",
+                                    "description": "Bitcoin transaction output",
+                                    "type": "string"
+                                  },
+                                  "timestamp": {
+                                    "examples": [
+                                      1713571767
+                                    ],
+                                    "title": "Timestamp",
+                                    "description": "Bitcoin transaction timestamp",
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "block_hash",
+                                  "block_height",
+                                  "tx_id",
+                                  "tx_index",
+                                  "timestamp"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "operation",
+                              "location"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/transactions/{tx_id}/activity": {
+      "get": {
+        "operationId": "getTransactionActivity",
+        "summary": "Transaction activity",
+        "tags": [
+          "Activity"
+        ],
+        "description": "Retrieves a paginated list of rune activity for a transaction",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "title": "Transaction ID",
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            },
+            "example": "8f46f0d4ef685e650727e6faf7e30f23b851a7709714ec774f7909b3fb5e604c",
+            "in": "path",
+            "name": "tx_id",
+            "required": true,
+            "description": "A transaction ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated activity response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "rune": {
+                                "title": "Rune detail",
+                                "description": "Details of the rune affected by this activity",
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "title": "ID",
+                                    "description": "Rune ID",
+                                    "examples": [
+                                      "840000:1"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "title": "Number",
+                                    "description": "Rune number",
+                                    "examples": [
+                                      1
+                                    ],
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "title": "Name",
+                                    "description": "Rune name",
+                                    "examples": [
+                                      "ZZZZZFEHUZZZZZ"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "spaced_name": {
+                                    "title": "Spaced name",
+                                    "description": "Rune name with spacers",
+                                    "examples": [
+                                      "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "number",
+                                  "name",
+                                  "spaced_name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rune"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "address": {
+                                "examples": [
+                                  "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                                ],
+                                "title": "Address",
+                                "description": "Bitcoin address which initiated this activity",
+                                "type": "string"
+                              },
+                              "receiver_address": {
+                                "examples": [
+                                  "bc1pgdrveee2v4ez95szaakw5gkd8eennv2dddf9rjdrlt6ch56lzrrsxgvazt"
+                                ],
+                                "title": "Receiver address",
+                                "description": "Bitcoin address which is receiving rune balance",
+                                "type": "string"
+                              },
+                              "amount": {
+                                "examples": [
+                                  "11000000000"
+                                ],
+                                "title": "Amount",
+                                "description": "Rune amount relevat to this activity",
+                                "type": "string"
+                              },
+                              "operation": {
+                                "title": "Operation",
+                                "description": "Type of operation described in this activity",
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "etching"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mint"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "burn"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "send"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "receive"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "location": {
+                                "title": "Transaction location",
+                                "description": "Location of the transaction which confirmed this operation",
+                                "type": "object",
+                                "properties": {
+                                  "block_hash": {
+                                    "examples": [
+                                      "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                                    ],
+                                    "title": "Block hash",
+                                    "description": "Bitcoin block hash",
+                                    "type": "string"
+                                  },
+                                  "block_height": {
+                                    "examples": [
+                                      840000
+                                    ],
+                                    "title": "Block height",
+                                    "description": "Bitcoin block height",
+                                    "type": "integer"
+                                  },
+                                  "tx_id": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                                    ],
+                                    "title": "Transaction ID",
+                                    "description": "Bitcoin transaction ID",
+                                    "type": "string"
+                                  },
+                                  "tx_index": {
+                                    "examples": [
+                                      1
+                                    ],
+                                    "title": "Transaction Index",
+                                    "description": "Index of this transaction in its Bitcoin block",
+                                    "type": "integer"
+                                  },
+                                  "vout": {
+                                    "examples": [
+                                      100
+                                    ],
+                                    "title": "Output number",
+                                    "description": "Bitcoin transaction output number",
+                                    "type": "integer"
+                                  },
+                                  "output": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                                    ],
+                                    "title": "Transaction output",
+                                    "description": "Bitcoin transaction output",
+                                    "type": "string"
+                                  },
+                                  "timestamp": {
+                                    "examples": [
+                                      1713571767
+                                    ],
+                                    "title": "Timestamp",
+                                    "description": "Bitcoin transaction timestamp",
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "block_hash",
+                                  "block_height",
+                                  "tx_id",
+                                  "tx_index",
+                                  "timestamp"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "operation",
+                              "location"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runes/v1/blocks/{block}/activity": {
+      "get": {
+        "operationId": "getBlockActivity",
+        "summary": "Block activity",
+        "tags": [
+          "Activity"
+        ],
+        "description": "Retrieves a paginated list of rune activity for a block",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Result offset"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Results per page"
+          },
+          {
+            "schema": {
+              "title": "OperationType",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "etching"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "mint"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "burn"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "send"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "receive"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "operation_type",
+            "required": false,
+            "description": "Filter activities by operation type"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "title": "Block Height",
+                  "description": "Bitcoin block height",
+                  "examples": [
+                    777678
+                  ],
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "title": "Block Hash",
+                  "description": "Bitcoin block hash",
+                  "examples": [
+                    "0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133"
+                  ],
+                  "type": "string",
+                  "pattern": "^[0]{8}[a-fA-F0-9]{56}$"
+                }
+              ]
+            },
+            "in": "path",
+            "name": "block",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Paginated activity response",
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "rune": {
+                                "title": "Rune detail",
+                                "description": "Details of the rune affected by this activity",
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "title": "ID",
+                                    "description": "Rune ID",
+                                    "examples": [
+                                      "840000:1"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "title": "Number",
+                                    "description": "Rune number",
+                                    "examples": [
+                                      1
+                                    ],
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "title": "Name",
+                                    "description": "Rune name",
+                                    "examples": [
+                                      "ZZZZZFEHUZZZZZ"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "spaced_name": {
+                                    "title": "Spaced name",
+                                    "description": "Rune name with spacers",
+                                    "examples": [
+                                      "Z•Z•Z•Z•Z•FEHU•Z•Z•Z•Z•Z"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "number",
+                                  "name",
+                                  "spaced_name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rune"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "address": {
+                                "examples": [
+                                  "bc1q7jd477wc5s88hsvenr0ddtatsw282hfjzg59wz"
+                                ],
+                                "title": "Address",
+                                "description": "Bitcoin address which initiated this activity",
+                                "type": "string"
+                              },
+                              "receiver_address": {
+                                "examples": [
+                                  "bc1pgdrveee2v4ez95szaakw5gkd8eennv2dddf9rjdrlt6ch56lzrrsxgvazt"
+                                ],
+                                "title": "Receiver address",
+                                "description": "Bitcoin address which is receiving rune balance",
+                                "type": "string"
+                              },
+                              "amount": {
+                                "examples": [
+                                  "11000000000"
+                                ],
+                                "title": "Amount",
+                                "description": "Rune amount relevat to this activity",
+                                "type": "string"
+                              },
+                              "operation": {
+                                "title": "Operation",
+                                "description": "Type of operation described in this activity",
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "etching"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mint"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "burn"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "send"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "receive"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "location": {
+                                "title": "Transaction location",
+                                "description": "Location of the transaction which confirmed this operation",
+                                "type": "object",
+                                "properties": {
+                                  "block_hash": {
+                                    "examples": [
+                                      "00000000000000000000c9787573a1f1775a2b56b403a2d0c7957e9a5bc754bb"
+                                    ],
+                                    "title": "Block hash",
+                                    "description": "Bitcoin block hash",
+                                    "type": "string"
+                                  },
+                                  "block_height": {
+                                    "examples": [
+                                      840000
+                                    ],
+                                    "title": "Block height",
+                                    "description": "Bitcoin block height",
+                                    "type": "integer"
+                                  },
+                                  "tx_id": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e"
+                                    ],
+                                    "title": "Transaction ID",
+                                    "description": "Bitcoin transaction ID",
+                                    "type": "string"
+                                  },
+                                  "tx_index": {
+                                    "examples": [
+                                      1
+                                    ],
+                                    "title": "Transaction Index",
+                                    "description": "Index of this transaction in its Bitcoin block",
+                                    "type": "integer"
+                                  },
+                                  "vout": {
+                                    "examples": [
+                                      100
+                                    ],
+                                    "title": "Output number",
+                                    "description": "Bitcoin transaction output number",
+                                    "type": "integer"
+                                  },
+                                  "output": {
+                                    "examples": [
+                                      "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e:100"
+                                    ],
+                                    "title": "Transaction output",
+                                    "description": "Bitcoin transaction output",
+                                    "type": "string"
+                                  },
+                                  "timestamp": {
+                                    "examples": [
+                                      1713571767
+                                    ],
+                                    "title": "Timestamp",
+                                    "description": "Bitcoin transaction timestamp",
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "block_hash",
+                                  "block_height",
+                                  "tx_id",
+                                  "tx_index",
+                                  "timestamp"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "operation",
+                              "location"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Root of a deployed API instance"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Etchings",
+      "description": "Rune etchings"
+    },
+    {
+      "name": "Activity",
+      "description": "Rune activity"
+    },
+    {
+      "name": "Balances",
+      "description": "Rune balances"
+    },
+    {
+      "name": "Status",
+      "description": "API status"
+    }
+  ],
+  "externalDocs": {
+    "url": "https://github.com/bitcoinuniverseio/bitcoin-indexer",
+    "description": "Source repository"
+  }
+}

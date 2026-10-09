@@ -24,11 +24,28 @@ pub fn bitcoind_get_client(config: &BitcoindConfig, ctx: &Context) -> Client {
     }
 }
 
+/// The `getblockchaininfo` fields the indexer reads. bitcoincore-rpc-json 0.18
+/// models `warnings` as a string, which Bitcoin Core 28+ returns as an array,
+/// so the full typed result no longer decodes; only these fields are parsed.
+#[derive(serde::Deserialize)]
+struct ChainInfo {
+    blocks: u64,
+    headers: u64,
+    #[serde(rename = "bestblockhash")]
+    best_block_hash: String,
+    #[serde(rename = "initialblockdownload")]
+    initial_block_download: bool,
+}
+
+fn get_chain_info(bitcoin_rpc: &Client) -> Result<ChainInfo, bitcoincore_rpc::Error> {
+    bitcoin_rpc.call::<ChainInfo>("getblockchaininfo", &[])
+}
+
 /// Retrieves the chain tip from bitcoind.
 pub fn bitcoind_get_chain_tip(config: &BitcoindConfig, ctx: &Context) -> BlockIdentifier {
     let bitcoin_rpc = bitcoind_get_client(config, ctx);
     loop {
-        match bitcoin_rpc.get_blockchain_info() {
+        match get_chain_info(&bitcoin_rpc) {
             Ok(result) => {
                 return BlockIdentifier {
                     index: result.blocks,
@@ -86,7 +103,7 @@ pub fn bitcoind_wait_for_chain_tip(config: &BitcoindConfig, ctx: &Context) -> Bl
     let mut confirmations = 0;
     let mut logged_info = false;
     loop {
-        match bitcoin_rpc.get_blockchain_info() {
+        match get_chain_info(&bitcoin_rpc) {
             Ok(result) => {
                 if !result.initial_block_download && result.blocks == result.headers {
                     confirmations += 1;
