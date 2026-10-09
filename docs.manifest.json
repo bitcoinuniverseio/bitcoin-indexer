@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "bitcoin-indexer",
+  "name": "Bitcoin indexer",
+  "classification": "indexer",
+  "repository": "bitcoinuniverseio/bitcoin-indexer",
+  "documentationUrl": "https://docs.bitcoinuniverse.io/developers/interfaces/",
+  "docsRoot": "docs",
+  "sourceRef": "develop",
+  "lifecycle": "experimental",
+  "chains": [
+    {
+      "chain": "bitcoin",
+      "networks": [
+        "mainnet",
+        "testnet",
+        "signet",
+        "regtest"
+      ]
+    }
+  ],
+  "protocols": [
+    "ordinals",
+    "brc-20",
+    "runes"
+  ],
+  "audiences": [
+    "indexer-operator",
+    "app-developer",
+    "protocol-implementer",
+    "infrastructure-operator"
+  ],
+  "contracts": {
+    "openapi": [
+      "docs/api/ordinals-openapi.json",
+      "docs/api/runes-openapi.json"
+    ]
+  },
+  "owners": [
+    "bitcoinuniverseio"
+  ],
+  "upstream": {
+    "project": "hirosystems/bitcoin-indexer",
+    "url": "https://github.com/hirosystems/bitcoin-indexer",
+    "license": "Apache-2.0",
+    "relationship": "fork",
+    "divergenceSummary": "Universe runs this indexer on its own infrastructure and has changed CI runners, release gating, toolchain pinning, and documentation. Protocol logic, database schema, and API surface are upstream's. Upstream tags v2.2.x and v3.0.x are the upstream project's release line, not a Bitcoin Universe release, so this repository stays experimental with no releasedRef."
+  },
+  "lastVerified": {
+    "commit": "43830dba90812a5805ec519c3f7eaf567a9e3511",
+    "timestamp": "2026-09-01T12:00:00Z"
+  },
+  "securityClassification": "public"
+}

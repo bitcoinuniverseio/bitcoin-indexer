@@ -79,7 +79,7 @@ pub async fn pg_insert_runes(
                    (id, number, name, spaced_name, block_hash, block_height, tx_index, tx_id, divisibility, premine, symbol, \
                     terms_amount, terms_cap, terms_height_start, terms_height_end, terms_offset_start, terms_offset_end, turbo, cenotaph, timestamp) \
                  SELECT \
-                   $1, (SELECT COALESCE(MAX(number), 0) + 1 FROM runes), $2, $3, $4, $5, $6, $7, $8, $9, $10, \
+                   $1, (SELECT COALESCE(MAX(number) + 1, 0) FROM runes), $2, $3, $4, $5, $6, $7, $8, $9, $10, \
                    $11, $12, $13, $14, $15, $16, $17, $18, $19 \
                  WHERE NOT EXISTS (SELECT 1 FROM runes WHERE name = $2) \
                  ON CONFLICT (name) DO NOTHING",
@@ -319,6 +319,13 @@ pub async fn pg_roll_back_block(block_height: u64, db_tx: &mut Transaction<'_>, 
 }
 
 pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T) -> u32 {
+    pg_get_next_rune_number(client).await.saturating_sub(1)
+}
+
+/// Number the next etched rune receives: one above the highest stored number,
+/// or 0 on a chain whose index holds no rune yet (no genesis rune off mainnet,
+/// matching ord, whose rune numbers start at 0 there).
+pub async fn pg_get_next_rune_number<T: GenericClient>(client: &T) -> u32 {
     let row = client
         .query_opt("SELECT MAX(number) AS max FROM runes", &[])
         .await
@@ -326,8 +333,50 @@ pub async fn pg_get_max_rune_number<T: GenericClient>(client: &T) -> u32 {
     let Some(row) = row else {
         return 0;
     };
-    let max: PgBigIntU32 = row.get("max");
-    max.0
+    let max: Option<PgBigIntU32> = row.get("max");
+    max.map(|value| value.0 + 1).unwrap_or(0)
+}
+
+/// Mainnet's genesis rune UNCOMMON•GOODS (1:0, etched by protocol at 840,000) is
+/// seeded by migration V1. ord creates it only on mainnet, so another network's
+/// index removes the seeded row before indexing; the row is matched by its
+/// exact mainnet block hash and nothing else is touched.
+pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(client: &T, network: bitcoin::Network) {
+    if network == bitcoin::Network::Bitcoin {
+        return;
+    }
+    client
+        .execute(
+            "DELETE FROM runes WHERE id = '1:0' AND number = 0 AND block_height = 840000 \
+             AND block_hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'",
+            &[],
+        )
+        .await
+        .expect("error removing the mainnet genesis rune from a non-mainnet index");
+}
+
+/// Records `block_height`/`block_hash` (0x-prefixed or bare) as the last fully indexed block.
+pub async fn pg_set_indexed_chain_tip<T: GenericClient>(client: &mut T, block_height: u64, block_hash: &str) {
+    let hash = block_hash.trim_start_matches("0x").to_string();
+    client
+        .execute(
+            "INSERT INTO indexed_chain_tip (id, block_height, block_hash) VALUES (TRUE, $1::text::numeric, $2) \
+             ON CONFLICT (id) DO UPDATE SET block_height = EXCLUDED.block_height, block_hash = EXCLUDED.block_hash",
+            &[&block_height.to_string(), &hash],
+        )
+        .await
+        .expect("error recording the indexed chain tip");
+}
+
+/// A rolled-back block can no longer be the indexed tip; the next indexed block records a new one.
+pub async fn pg_unset_indexed_chain_tip_from<T: GenericClient>(client: &mut T, block_height: u64) {
+    client
+        .execute(
+            "DELETE FROM indexed_chain_tip WHERE block_height >= $1::text::numeric",
+            &[&block_height.to_string()],
+        )
+        .await
+        .expect("error clearing the indexed chain tip");
 }
 
 pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {

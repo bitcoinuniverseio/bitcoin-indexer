@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   api-lint:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -65,6 +68,9 @@ jobs:
         run: npm run lint:unused-exports
 
   api-test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -124,6 +130,9 @@ jobs:
         if: always()
 
   rustfmt:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     name: rust-fmt
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     strategy:
@@ -183,6 +192,9 @@ jobs:
           exit "${CARGO_STATUS}"
 
   clippy:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     name: rust-clippy
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     steps:
@@ -231,6 +243,9 @@ jobs:
           exit $CLIPPY_EXIT_CODE
 
   test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -301,7 +316,10 @@ jobs:
   semantic-release:
     # The Universe fork integrates and deploys its pinned production binary
     # through its own release gate; it has no Hiro release-bot credentials.
-    if: github.repository != 'bitcoinuniverseio/bitcoin-indexer'
+    if: >-
+      github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
     needs: [api-lint, api-test, test, rustfmt, clippy]
     permissions:
@@ -350,8 +368,11 @@ jobs:
             conventional-changelog-conventionalcommits@6.1.0
 
   build-publish:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
-    needs: [semantic-release]
+    needs: semantic-release
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
     steps:
@@ -402,12 +423,15 @@ jobs:
           push: ${{ (github.ref != 'refs/heads/main' || needs.semantic-release.outputs.new_release_published == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
   api-build-publish:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
     runs-on: ${{ contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && fromJSON('["self-hosted","universe-runners-1"]') || 'ubuntu-24.04' }}
-    needs: [semantic-release]
+    needs: semantic-release
     steps:
       - uses: actions/checkout@v4
         with:
