@@ -152,7 +152,10 @@ mod test {
         let pool = pg_pool(&PgDatabaseConfig {
             dbname: "postgres".to_string(),
             host: "localhost".to_string(),
-            port: 5432,
+            port: std::env::var("ORDHOOK_TEST_PG_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(5432),
             user: "postgres".to_string(),
             password: Some("postgres".to_string()),
             search_path: None,
