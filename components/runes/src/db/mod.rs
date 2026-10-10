@@ -341,7 +341,10 @@ pub async fn pg_get_next_rune_number<T: GenericClient>(client: &T) -> u32 {
 /// seeded by migration V1. ord creates it only on mainnet, so another network's
 /// index removes the seeded row before indexing; the row is matched by its
 /// exact mainnet block hash and nothing else is touched.
-pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(client: &T, network: bitcoin::Network) {
+pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(
+    client: &T,
+    network: bitcoin::Network,
+) {
     if network == bitcoin::Network::Bitcoin {
         return;
     }
@@ -356,7 +359,11 @@ pub async fn pg_remove_mainnet_genesis_rune<T: GenericClient>(client: &T, networ
 }
 
 /// Records `block_height`/`block_hash` (0x-prefixed or bare) as the last fully indexed block.
-pub async fn pg_set_indexed_chain_tip<T: GenericClient>(client: &mut T, block_height: u64, block_hash: &str) {
+pub async fn pg_set_indexed_chain_tip<T: GenericClient>(
+    client: &mut T,
+    block_height: u64,
+    block_hash: &str,
+) {
     let hash = block_hash.trim_start_matches("0x").to_string();
     client
         .execute(
@@ -542,7 +549,10 @@ pub fn pg_test_config() -> config::PgDatabaseConfig {
     config::PgDatabaseConfig {
         dbname: "postgres".to_string(),
         host: "localhost".to_string(),
-        port: 5432,
+        port: std::env::var("ORDHOOK_TEST_PG_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(5432),
         user: "postgres".to_string(),
         password: Some("postgres".to_string()),
         search_path: None,
