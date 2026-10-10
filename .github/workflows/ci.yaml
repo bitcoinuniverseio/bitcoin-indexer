@@ -107,9 +107,24 @@ jobs:
       - name: Install deps
         run: npm ci --audit=false
 
+      - name: Allocate an isolated PostgreSQL port
+        run: |
+          # Jobs share one self-hosted host, so each gets its own compose project
+          # and host port instead of the fixed 5432.
+          port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+          {
+            echo "PG_HOST_PORT=$port"
+            echo "ORDHOOK_TEST_PG_PORT=$port"
+            echo "RUNES_PGPORT=$port"
+            echo "ORDINALS_PGPORT=$port"
+            echo "BRC20_PGPORT=$port"
+            echo "COMPOSE_PROJECT_NAME=bitcoin-indexer-${{ github.run_id }}-${{ github.run_attempt }}-${RUNNER_NAME}-pg"
+          } >> "$GITHUB_ENV"
+
       - name: Setup integration environment
         run: |
-          sudo ufw disable
+          # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
+          if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
           npm run testenv:run -- -d
           npm run testenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -275,9 +290,24 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Allocate an isolated PostgreSQL port
+        run: |
+          # Jobs share one self-hosted host, so each gets its own compose project
+          # and host port instead of the fixed 5432.
+          port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+          {
+            echo "PG_HOST_PORT=$port"
+            echo "ORDHOOK_TEST_PG_PORT=$port"
+            echo "RUNES_PGPORT=$port"
+            echo "ORDINALS_PGPORT=$port"
+            echo "BRC20_PGPORT=$port"
+            echo "COMPOSE_PROJECT_NAME=bitcoin-indexer-${{ github.run_id }}-${{ github.run_attempt }}-${RUNNER_NAME}-pg"
+          } >> "$GITHUB_ENV"
+
       - name: Setup integration environment
         run: |
-          sudo ufw disable
+          # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
+          if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
           docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml up -d
           docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml logs -t -f --no-color &> docker-compose-logs.txt &
 
