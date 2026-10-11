@@ -101,8 +101,12 @@ pub trait FromPgRow {
 
 #[cfg(test)]
 pub async fn pg_test_client() -> tokio_postgres::Client {
+    let port = std::env::var("ORDHOOK_TEST_PG_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(5432);
     let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=postgres password=postgres",
+        &format!("host=localhost port={port} user=postgres password=postgres"),
         tokio_postgres::NoTls,
     )
     .await

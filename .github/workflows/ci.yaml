@@ -125,7 +125,7 @@ jobs:
         run: |
           # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
           if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
-          npm run testenv:run -- -d
+          npm run testenv:run -- -d --wait
           npm run testenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
@@ -166,6 +166,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: |
+          # Every runner on the host shares one rustup home, so installs are
+          # serialized: a job must never see a half-installed toolchain.
+          flock /tmp/rustup-toolchain-install.lock rustup toolchain install
 
       - name: Rustfmt Job Summary
         run: |
@@ -221,6 +227,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y llvm clang libclang-dev
+
+      - name: Install the pinned Rust toolchain
+        run: |
+          # Every runner on the host shares one rustup home, so installs are
+          # serialized: a job must never see a half-installed toolchain.
+          flock /tmp/rustup-toolchain-install.lock rustup toolchain install
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -308,13 +320,19 @@ jobs:
         run: |
           # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
           if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
-          docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml up -d
+          docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml up -d --wait
           docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml logs -t -f --no-color &> docker-compose-logs.txt &
 
       - name: Install LLVM and CLang
         run: |
           sudo apt-get update
           sudo apt-get install -y llvm clang libclang-dev
+
+      - name: Install the pinned Rust toolchain
+        run: |
+          # Every runner on the host shares one rustup home, so installs are
+          # serialized: a job must never see a half-installed toolchain.
+          flock /tmp/rustup-toolchain-install.lock rustup toolchain install
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
