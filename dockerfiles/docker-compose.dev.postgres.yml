@@ -2,6 +2,10 @@ version: '3.7'
 services:
   postgres:
     image: "postgres:15"
+    # Single service, reached through its published port: use the default bridge
+    # instead of a per-project network, which a host-wide "docker network prune"
+    # can delete between network creation and container start.
+    network_mode: bridge
     ports:
       - "${PG_HOST_PORT:-5432}:5432"
     environment:

@@ -154,7 +154,14 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run testenv:stop
+        run: |
+          # A loaded daemon can miss the exit event of a killed container, so
+          # the teardown is retried before it is reported as failed.
+          for attempt in 1 2 3 4 5; do
+            if npm run testenv:stop; then exit 0; fi
+            sleep 5
+          done
+          exit 1
         if: always()
 
   rustfmt:
@@ -384,7 +391,14 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml down -v -t 0
+        run: |
+          # A loaded daemon can miss the exit event of a killed container, so
+          # the teardown is retried before it is reported as failed.
+          for attempt in 1 2 3 4 5; do
+            if docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml down -v -t 0; then exit 0; fi
+            sleep 5
+          done
+          exit 1
         if: always()
 
   semantic-release:
