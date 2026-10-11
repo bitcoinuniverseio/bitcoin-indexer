@@ -125,7 +125,20 @@ jobs:
         run: |
           # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
           if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
-          npm run testenv:run -- -d --wait
+          npm run testenv:run -- -d
+          # Bounded readiness wait. TCP on purpose: the init-time server only
+          # listens on the unix socket.
+          for attempt in $(seq 1 150); do
+            if timeout 30 docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml exec -T postgres pg_isready -q -h 127.0.0.1 -U postgres; then
+              break
+            fi
+            if [ "$attempt" -eq 150 ]; then
+              echo "PostgreSQL did not become ready" >&2
+              docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml logs --no-color
+              exit 1
+            fi
+            sleep 2
+          done
           npm run testenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
@@ -177,7 +190,7 @@ jobs:
         run: |
           # Run cargo and store the original output
           CARGO_STATUS=0
-          CARGO_OUTPUT=$(cargo fmt --all --manifest-path=Cargo.toml -- --config group_imports=StdExternalCrate,imports_granularity=Crate --color=always --check 2>/dev/null) || CARGO_STATUS=$?
+          CARGO_OUTPUT=$(cargo fmt --all --manifest-path=Cargo.toml -- --config group_imports=StdExternalCrate,imports_granularity=Crate --color=always --check) || CARGO_STATUS=$?
 
           if [ ${CARGO_STATUS} -eq 0 ]; then
               cat <<MARKDOWN_INTRO >> $GITHUB_STEP_SUMMARY
@@ -320,7 +333,20 @@ jobs:
         run: |
           # GitHub-hosted VMs ship ufw; the self-hosted fleet has no host firewall to open.
           if command -v ufw >/dev/null && sudo -n true 2>/dev/null; then sudo ufw disable; fi
-          docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml up -d --wait
+          docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml up -d
+          # Bounded readiness wait. TCP on purpose: the init-time server only
+          # listens on the unix socket.
+          for attempt in $(seq 1 150); do
+            if timeout 30 docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml exec -T postgres pg_isready -q -h 127.0.0.1 -U postgres; then
+              break
+            fi
+            if [ "$attempt" -eq 150 ]; then
+              echo "PostgreSQL did not become ready" >&2
+              docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml logs --no-color
+              exit 1
+            fi
+            sleep 2
+          done
           docker compose -f ../../dockerfiles/docker-compose.dev.postgres.yml logs -t -f --no-color &> docker-compose-logs.txt &
 
       - name: Install LLVM and CLang
