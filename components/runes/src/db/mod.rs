@@ -396,6 +396,24 @@ pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {
 }
 
 pub async fn get_chain_tip<T: GenericClient>(client: &T) -> Option<BlockIdentifier> {
+    // The last fully indexed block. Blocks without Rune activity leave no ledger row, so the
+    // ledger alone restarts every sync at the last block that had one and replays the quiet
+    // blocks after it, moving the reported tip back and forth on each pass.
+    let indexed = client
+        .query_opt(
+            "SELECT block_height, block_hash FROM indexed_chain_tip WHERE id",
+            &[],
+        )
+        .await
+        .expect("get_chain_tip");
+    if let Some(row) = indexed {
+        let block_height: PgNumericU64 = row.get("block_height");
+        let block_hash: String = row.get("block_hash");
+        return Some(BlockIdentifier {
+            index: block_height.0,
+            hash: format!("0x{block_hash}"),
+        });
+    }
     let row = client
         .query_opt(
             "SELECT block_height, block_hash
