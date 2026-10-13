@@ -619,3 +619,37 @@ pub async fn pg_test_roll_back_migrations(pg_client: &mut tokio_postgres::Client
             }
         };
 }
+
+#[cfg(test)]
+mod chain_tip_tests {
+    use bitcoind::utils::Context;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn chain_tip_follows_the_indexed_tip_not_the_last_ledger_row() {
+        let ctx = Context::empty();
+        let _migrated = pg_test_client(true, &ctx).await;
+        let pool = postgres::pg_pool(&pg_test_config()).expect("pool");
+        let mut client = postgres::pg_pool_client(&pool).await.expect("client");
+        // Everything happens inside a transaction that is rolled back, so the
+        // shared test database is left as it was.
+        let mut tx = postgres::pg_begin(&mut client).await.expect("transaction");
+        tx.batch_execute("DELETE FROM indexed_chain_tip; DELETE FROM ledger;")
+            .await
+            .expect("clear");
+        assert_eq!(get_chain_tip(&tx).await, None, "an empty index has no tip");
+
+        let hash = "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5";
+        pg_set_indexed_chain_tip(&mut tx, 840_005, &format!("0x{hash}")).await;
+        assert_eq!(
+            get_chain_tip(&tx).await,
+            Some(BlockIdentifier {
+                index: 840_005,
+                hash: format!("0x{hash}")
+            }),
+            "a quiet block with no ledger row is still the tip"
+        );
+        tx.rollback().await.expect("rollback");
+    }
+}
