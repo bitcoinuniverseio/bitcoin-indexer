@@ -396,6 +396,24 @@ pub async fn pg_get_block_height<T: GenericClient>(client: &T) -> Option<u64> {
 }
 
 pub async fn get_chain_tip<T: GenericClient>(client: &T) -> Option<BlockIdentifier> {
+    // The last fully indexed block. Blocks without Rune activity leave no ledger row, so the
+    // ledger alone restarts every sync at the last block that had one and replays the quiet
+    // blocks after it, moving the reported tip back and forth on each pass.
+    let indexed = client
+        .query_opt(
+            "SELECT block_height, block_hash FROM indexed_chain_tip WHERE id",
+            &[],
+        )
+        .await
+        .expect("get_chain_tip");
+    if let Some(row) = indexed {
+        let block_height: PgNumericU64 = row.get("block_height");
+        let block_hash: String = row.get("block_hash");
+        return Some(BlockIdentifier {
+            index: block_height.0,
+            hash: format!("0x{block_hash}"),
+        });
+    }
     let row = client
         .query_opt(
             "SELECT block_height, block_hash
@@ -600,4 +618,38 @@ pub async fn pg_test_roll_back_migrations(pg_client: &mut tokio_postgres::Client
                 process::exit(1);
             }
         };
+}
+
+#[cfg(test)]
+mod chain_tip_tests {
+    use bitcoind::utils::Context;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn chain_tip_follows_the_indexed_tip_not_the_last_ledger_row() {
+        let ctx = Context::empty();
+        let _migrated = pg_test_client(true, &ctx).await;
+        let pool = postgres::pg_pool(&pg_test_config()).expect("pool");
+        let mut client = postgres::pg_pool_client(&pool).await.expect("client");
+        // Everything happens inside a transaction that is rolled back, so the
+        // shared test database is left as it was.
+        let mut tx = postgres::pg_begin(&mut client).await.expect("transaction");
+        tx.batch_execute("DELETE FROM indexed_chain_tip; DELETE FROM ledger;")
+            .await
+            .expect("clear");
+        assert_eq!(get_chain_tip(&tx).await, None, "an empty index has no tip");
+
+        let hash = "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5";
+        pg_set_indexed_chain_tip(&mut tx, 840_005, &format!("0x{hash}")).await;
+        assert_eq!(
+            get_chain_tip(&tx).await,
+            Some(BlockIdentifier {
+                index: 840_005,
+                hash: format!("0x{hash}")
+            }),
+            "a quiet block with no ledger row is still the tip"
+        );
+        tx.rollback().await.expect("rollback");
+    }
 }
