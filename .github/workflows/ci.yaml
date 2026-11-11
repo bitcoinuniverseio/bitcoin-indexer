@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
@@ -78,7 +78,7 @@ jobs:
     defaults:
       run:
         working-directory: ./api/${{ matrix.suite }}
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -169,7 +169,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     name: rust-fmt
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     strategy:
       fail-fast: false
       matrix:
@@ -237,7 +237,7 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
     name: rust-clippy
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -302,7 +302,7 @@ jobs:
           - cli
           - ordinals
           - runes
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     defaults:
       run:
         working-directory: ./components/${{ matrix.suite }}
@@ -408,7 +408,7 @@ jobs:
       github.repository != 'bitcoinuniverseio/bitcoin-indexer' &&
       (github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     needs: [api-lint, api-test, test, rustfmt, clippy]
     permissions:
       contents: write
@@ -459,7 +459,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     needs: semantic-release
     outputs:
       docker_image_digest: ${{ steps.docker_push.outputs.digest }}
@@ -518,7 +518,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [ordinals, runes]
-    runs-on: [self-hosted, universe-runners-1]
+    runs-on: [self-hosted, Linux, X64, universe]
     needs: semantic-release
     steps:
       - uses: actions/checkout@v4
