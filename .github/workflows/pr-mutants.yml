@@ -39,8 +39,10 @@ jobs:
 
       - name: Relative diff
         id: relative_diff
+        env:
+          BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
         run: |
-          git diff $(git merge-base origin/${{ github.base_ref || 'main' }} HEAD)..HEAD > git.diff
+          git diff "$(git merge-base "origin/$BASE_REF" HEAD)..HEAD" > git.diff
 
       - name: Install cargo-mutants
         id: install_cargo_mutants
